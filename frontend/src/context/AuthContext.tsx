@@ -171,6 +171,13 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     [scheduleAutoLogout]
   );
 
+  const setAuthForContext = useCallback(
+    (nextUser: User, nextToken: string) => {
+      setAuth(nextUser, nextToken);
+    },
+    [setAuth]
+  );
+
   const login = useCallback(
     async (data: LoginFormData) => {
       setIsLoading(true);
@@ -269,10 +276,10 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
       login,
       register,
       logout,
-      setAuth: (nextUser, nextToken) => setAuth(nextUser, nextToken),
+      setAuth: setAuthForContext,
       clearError,
     }),
-    [user, token, isLoading, error, login, register, logout, setAuth, clearError]
+    [user, token, isLoading, error, login, register, logout, setAuthForContext, clearError]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

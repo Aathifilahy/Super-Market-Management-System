@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Grid,
   Card,
@@ -17,20 +17,57 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
+  Stack,
+  TextField,
 } from '@mui/material';
 import { productAPI } from '../services/api';
+import cartApi from '../services/cartApi';
+import { useAuth } from '../hooks/useAuth';
 import { Product } from '../types/Product';
 
+function normalizeRole(role: unknown): string {
+  if (typeof role === 'string') {
+    return role;
+  }
+
+  if (typeof role === 'number') {
+    switch (role) {
+      case 0:
+        return 'Customer';
+      case 1:
+        return 'Admin';
+      case 2:
+        return 'InventoryManager';
+      case 3:
+        return 'Cashier';
+      default:
+        return String(role);
+    }
+  }
+
+  return '';
+}
+
 const ProductList: React.FC = () => {
+  const { user, isAuthenticated } = useAuth();
+  const location = useLocation();
+
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [cartMessage, setCartMessage] = useState<string | null>(null);
+  const [qtyById, setQtyById] = useState<Record<number, number>>({});
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; productId: number | null }>({
     open: false,
     productId: null,
   });
 
   const navigate = useNavigate();
+
+  const role = normalizeRole(user?.role);
+  const isAdminOrInventory = role === 'Admin' || role === 'InventoryManager';
+  const isInventoryRoute = useMemo(() => location.pathname.startsWith('/admin'), [location.pathname]);
+  const showInventoryActions = isAdminOrInventory && isInventoryRoute;
 
   useEffect(() => {
     fetchProducts();
@@ -42,6 +79,16 @@ const ProductList: React.FC = () => {
       const data = await productAPI.getAll();
       setProducts(data);
       setError(null);
+
+      setQtyById((prev) => {
+        const next = { ...prev };
+        data.forEach((p) => {
+          if (typeof next[p.id] !== 'number' || next[p.id] < 1) {
+            next[p.id] = 1;
+          }
+        });
+        return next;
+      });
     } catch (err) {
       setError('Failed to load products. Please try again.');
       console.error(err);
@@ -70,6 +117,34 @@ const ProductList: React.FC = () => {
     navigate('/add-product');
   };
 
+  const handleAddToCart = async (product: Product) => {
+    setCartMessage(null);
+
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+
+    const quantity = qtyById[product.id] ?? 1;
+    if (quantity < 1) {
+      setCartMessage('Quantity must be at least 1.');
+      return;
+    }
+
+    if (quantity > product.quantity) {
+      setCartMessage(`Only ${product.quantity} items are available in stock.`);
+      return;
+    }
+
+    try {
+      await cartApi.addToCart(product.id, quantity);
+      setCartMessage(`Added ${quantity} × ${product.name} to cart.`);
+    } catch (err: any) {
+      const message = typeof err?.message === 'string' ? err.message : 'Failed to add to cart.';
+      setCartMessage(message);
+    }
+  };
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
@@ -90,10 +165,18 @@ const ProductList: React.FC = () => {
     <Box p={3}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4">Products</Typography>
-        <Button variant="contained" color="primary" onClick={handleAddNew}>
-          Add New Product
-        </Button>
+        {showInventoryActions ? (
+          <Button variant="contained" color="primary" onClick={handleAddNew}>
+            Add New Product
+          </Button>
+        ) : null}
       </Box>
+
+      {cartMessage ? (
+        <Alert sx={{ mb: 2 }} severity={cartMessage.toLowerCase().includes('fail') ? 'error' : 'success'}>
+          {cartMessage}
+        </Alert>
+      ) : null}
 
       {products.length === 0 ? (
         <Alert severity="info">No products found. Add your first product!</Alert>
@@ -150,16 +233,46 @@ const ProductList: React.FC = () => {
                 </CardContent>
 
                 <CardActions>
-                  <Button size="small" color="primary" onClick={() => handleEdit(product.id)}>
-                    Edit
-                  </Button>
-                  <Button
-                    size="small"
-                    color="error"
-                    onClick={() => setDeleteDialog({ open: true, productId: product.id })}
-                  >
-                    Delete
-                  </Button>
+                  {showInventoryActions ? (
+                    <>
+                      <Button size="small" color="primary" onClick={() => handleEdit(product.id)}>
+                        Edit
+                      </Button>
+                      <Button
+                        size="small"
+                        color="error"
+                        onClick={() => setDeleteDialog({ open: true, productId: product.id })}
+                      >
+                        Delete
+                      </Button>
+                    </>
+                  ) : (
+                    <Stack direction="row" spacing={1} alignItems="center" sx={{ width: '100%' }}>
+                      <TextField
+                        size="small"
+                        label="Qty"
+                        type="number"
+                        value={qtyById[product.id] ?? 1}
+                        inputProps={{ min: 1, max: product.quantity }}
+                        onChange={(e) => {
+                          const value = Number(e.target.value);
+                          setQtyById((prev) => ({
+                            ...prev,
+                            [product.id]: Number.isFinite(value) ? value : 1,
+                          }));
+                        }}
+                        sx={{ width: 90 }}
+                      />
+                      <Button
+                        variant="contained"
+                        fullWidth
+                        disabled={product.quantity <= 0 || product.isExpired}
+                        onClick={() => void handleAddToCart(product)}
+                      >
+                        Add to Cart
+                      </Button>
+                    </Stack>
+                  )}
                 </CardActions>
               </Card>
             </Grid>
