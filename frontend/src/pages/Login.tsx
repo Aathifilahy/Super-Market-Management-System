@@ -25,29 +25,7 @@ import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import { SubmitHandler, useForm } from 'react-hook-form';
 import { LoginFormData } from '../types/auth';
 import { useAuth } from '../hooks/useAuth';
-
-function normalizeRole(role: unknown): string {
-  if (typeof role === 'string') {
-    return role;
-  }
-
-  if (typeof role === 'number') {
-    switch (role) {
-      case 0:
-        return 'Customer';
-      case 1:
-        return 'Admin';
-      case 2:
-        return 'InventoryManager';
-      case 3:
-        return 'Cashier';
-      default:
-        return String(role);
-    }
-  }
-
-  return '';
-}
+import { isAdminOrInventoryRole, isCustomerRole, normalizeRole } from '../utils/role';
 
 function Login() {
   const navigate = useNavigate();
@@ -62,11 +40,19 @@ function Login() {
     }
 
     const role = normalizeRole(user.role);
-    const isAdminOrInventory = role === 'Admin' || role === 'InventoryManager';
+    const isAdminOrInventory = isAdminOrInventoryRole(user.role);
+    const isCustomer = isCustomerRole(user.role);
 
     if (isAdminLogin && !isAdminOrInventory) {
       logout();
       window.alert('This account is not authorized for Admin/Staff access.');
+      navigate('/start', { replace: true });
+      return;
+    }
+
+    if (!isAdminLogin && !isCustomer) {
+      logout();
+      window.alert('This account is not authorized for Customer access.');
       navigate('/start', { replace: true });
       return;
     }
@@ -192,7 +178,7 @@ function Login() {
 
             <Typography variant="body2" color="text.secondary" textAlign="center">
               Don&apos;t have an account?{' '}
-              <Link component={RouterLink} to="/register" underline="hover" fontWeight={600}>
+              <Link component={RouterLink} to={isAdminLogin ? '/admin/register' : '/register'} underline="hover" fontWeight={600}>
                 Register here
               </Link>
             </Typography>

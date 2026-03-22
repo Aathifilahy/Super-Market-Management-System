@@ -1,29 +1,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-
-function normalizeRole(role: unknown): string {
-  if (typeof role === 'string') {
-    return role;
-  }
-
-  if (typeof role === 'number') {
-    switch (role) {
-      case 0:
-        return 'Customer';
-      case 1:
-        return 'Admin';
-      case 2:
-        return 'InventoryManager';
-      case 3:
-        return 'Cashier';
-      default:
-        return String(role);
-    }
-  }
-
-  return '';
-}
+import { normalizeRole } from '../utils/role';
 
 export default function RequireRole({
   roles,
@@ -39,7 +17,7 @@ export default function RequireRole({
   }
 
   if (!isAuthenticated || !user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/start" replace />;
   }
 
   const role = normalizeRole(user.role);

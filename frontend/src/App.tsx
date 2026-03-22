@@ -10,42 +10,20 @@ import EditProduct from './pages/EditProduct';
 import Home from './pages/Home';
 import Landing from './pages/Landing';
 import Register from './pages/Register';
+import AdminRegister from './pages/AdminRegister';
 import Login from './pages/Login';
 import Profile from './pages/Profile';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
 import Orders from './pages/Orders';
 import OrderDetails from './pages/OrderDetails';
-
-function normalizeRole(role: unknown): string {
-  if (typeof role === 'string') {
-    return role;
-  }
-
-  if (typeof role === 'number') {
-    switch (role) {
-      case 0:
-        return 'Customer';
-      case 1:
-        return 'Admin';
-      case 2:
-        return 'InventoryManager';
-      case 3:
-        return 'Cashier';
-      default:
-        return String(role);
-    }
-  }
-
-  return '';
-}
+import { isAdminOrInventoryRole } from './utils/role';
 
 function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
-  const role = normalizeRole(user?.role);
-  const isAdminOrInventory = role === 'Admin' || role === 'InventoryManager';
+  const isAdminOrInventory = isAdminOrInventoryRole(user?.role);
   const hideNav = location.pathname === '/start';
 
   return (
@@ -131,6 +109,7 @@ function AppShell() {
           <Route path="/shop" element={<ProductList />} />
 
           <Route path="/admin/login" element={<Login />} />
+          <Route path="/admin/register" element={<AdminRegister />} />
 
           <Route
             path="/admin/products"

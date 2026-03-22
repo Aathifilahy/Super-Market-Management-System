@@ -51,7 +51,7 @@ function getPasswordStrength(password: string): PasswordStrength {
   return { score, label: 'Strong', color: 'success' };
 }
 
-function Register() {
+function AdminRegister() {
   const navigate = useNavigate();
   const { register: registerUser, isLoading, error, clearError } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
@@ -69,7 +69,7 @@ function Register() {
       email: '',
       password: '',
       confirmPassword: '',
-      role: 'Customer',
+      role: 'Admin',
       address: '',
       phone: '',
       rememberMe: true,
@@ -89,9 +89,9 @@ function Register() {
     try {
       await registerUser({
         ...data,
-        role: 'Customer',
+        role: 'Admin',
       });
-      navigate('/');
+      navigate('/admin/products');
     } catch {
       // Error is surfaced via auth context state.
     }
@@ -104,10 +104,10 @@ function Register() {
           <Stack spacing={3}>
             <Box>
               <Typography variant="h4" fontWeight={700} gutterBottom>
-                Create account
+                Create admin account
               </Typography>
               <Typography variant="body1" color="text.secondary">
-                Register to manage your shopping, orders, and account details.
+                Register an admin account for inventory and system management.
               </Typography>
             </Box>
 
@@ -150,9 +150,9 @@ function Register() {
 
                 <Grid size={{ xs: 12, md: 6 }}>
                   <FormControl fullWidth error={Boolean(errors.password)}>
-                    <InputLabel htmlFor="register-password">Password</InputLabel>
+                    <InputLabel htmlFor="admin-register-password">Password</InputLabel>
                     <OutlinedInput
-                      id="register-password"
+                      id="admin-register-password"
                       type={showPassword ? 'text' : 'password'}
                       autoComplete="new-password"
                       label="Password"
@@ -201,9 +201,9 @@ function Register() {
 
                 <Grid size={{ xs: 12, md: 6 }}>
                   <FormControl fullWidth error={Boolean(errors.confirmPassword)}>
-                    <InputLabel htmlFor="register-confirm-password">Confirm Password</InputLabel>
+                    <InputLabel htmlFor="admin-register-confirm-password">Confirm Password</InputLabel>
                     <OutlinedInput
-                      id="register-confirm-password"
+                      id="admin-register-confirm-password"
                       type={showConfirmPassword ? 'text' : 'password'}
                       autoComplete="new-password"
                       label="Confirm Password"
@@ -268,15 +268,15 @@ function Register() {
                     disabled={isLoading || !isValid}
                     sx={{ py: 1.4, borderRadius: 999 }}
                   >
-                    {isLoading ? <CircularProgress size={24} color="inherit" /> : 'Create Account'}
+                    {isLoading ? <CircularProgress size={24} color="inherit" /> : 'Create Admin Account'}
                   </Button>
                 </Grid>
               </Grid>
             </Box>
 
             <Typography variant="body2" color="text.secondary" textAlign="center">
-              Already have an account?{' '}
-              <Link component={RouterLink} to="/login" underline="hover" fontWeight={600}>
+              Already have an admin account?{' '}
+              <Link component={RouterLink} to="/admin/login" underline="hover" fontWeight={600}>
                 Sign in here
               </Link>
             </Typography>
@@ -287,4 +287,4 @@ function Register() {
   );
 }
 
-export default Register;
+export default AdminRegister;

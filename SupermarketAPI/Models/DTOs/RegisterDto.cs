@@ -27,7 +27,7 @@ public class RegisterDto
     [StringLength(500)]
     public string? Address { get; set; }
 
-    [Phone]
+    [RegularExpression(@"^[0-9+()\-\s]{7,20}$", ErrorMessage = "Phone number must be 7-20 characters and contain only digits, spaces, and + ( ) - symbols.")]
     [StringLength(20)]
     public string? Phone { get; set; }
 }

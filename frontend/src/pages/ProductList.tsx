@@ -24,29 +24,7 @@ import { productAPI } from '../services/api';
 import cartApi from '../services/cartApi';
 import { useAuth } from '../hooks/useAuth';
 import { Product } from '../types/Product';
-
-function normalizeRole(role: unknown): string {
-  if (typeof role === 'string') {
-    return role;
-  }
-
-  if (typeof role === 'number') {
-    switch (role) {
-      case 0:
-        return 'Customer';
-      case 1:
-        return 'Admin';
-      case 2:
-        return 'InventoryManager';
-      case 3:
-        return 'Cashier';
-      default:
-        return String(role);
-    }
-  }
-
-  return '';
-}
+import { isAdminOrInventoryRole } from '../utils/role';
 
 const ProductList: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
@@ -64,8 +42,7 @@ const ProductList: React.FC = () => {
 
   const navigate = useNavigate();
 
-  const role = normalizeRole(user?.role);
-  const isAdminOrInventory = role === 'Admin' || role === 'InventoryManager';
+  const isAdminOrInventory = isAdminOrInventoryRole(user?.role);
   const isInventoryRoute = useMemo(() => location.pathname.startsWith('/admin'), [location.pathname]);
   const showInventoryActions = isAdminOrInventory && isInventoryRoute;
 

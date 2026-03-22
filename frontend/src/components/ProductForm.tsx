@@ -11,29 +11,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { CreateProductDto, UpdateProductDto } from '../types/Product';
 import { useAuth } from '../hooks/useAuth';
-
-function normalizeRole(role: unknown): string {
-  if (typeof role === 'string') {
-    return role;
-  }
-
-  if (typeof role === 'number') {
-    switch (role) {
-      case 0:
-        return 'Customer';
-      case 1:
-        return 'Admin';
-      case 2:
-        return 'InventoryManager';
-      case 3:
-        return 'Cashier';
-      default:
-        return String(role);
-    }
-  }
-
-  return '';
-}
+import { isAdminOrInventoryRole } from '../utils/role';
 
 interface ProductFormProps {
   initialData?: UpdateProductDto;
@@ -45,8 +23,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData, onSubmit, title 
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const role = normalizeRole(user?.role);
-  const isAdminOrInventory = role === 'Admin' || role === 'InventoryManager';
+  const isAdminOrInventory = isAdminOrInventoryRole(user?.role);
   const afterSavePath = isAdminOrInventory ? '/admin/products' : '/shop';
   const [formData, setFormData] = useState<CreateProductDto>({
     name: '',

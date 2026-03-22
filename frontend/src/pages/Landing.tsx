@@ -148,9 +148,14 @@ export default function Landing() {
                     <Typography color="text.secondary">
                       Inventory management (product CRUD). Staff accounts are created via promotion/invite.
                     </Typography>
-                    <Button variant="contained" color="secondary" onClick={() => navigate('/admin/login')}>
-                      Admin Login
-                    </Button>
+                    <Stack direction="row" spacing={2} flexWrap="wrap">
+                      <Button variant="contained" color="secondary" onClick={() => navigate('/admin/login')}>
+                        Admin Login
+                      </Button>
+                      <Button variant="outlined" color="secondary" onClick={() => navigate('/admin/register')}>
+                        Admin Sign Up
+                      </Button>
+                    </Stack>
                   </Stack>
                 </CardContent>
               </Card>

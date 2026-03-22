@@ -89,6 +89,7 @@ if (app.Environment.IsDevelopment())
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     var startupLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    var autoMigrateOnStartup = builder.Configuration.GetValue<bool>("AutoMigrateOnStartup");
 
     try
     {
@@ -97,8 +98,15 @@ if (app.Environment.IsDevelopment())
             startupLogger.LogError("Database connection check failed. Verify MySQL host, port, user, password, and authentication plugin settings.");
         }
 
-        dbContext.Database.Migrate();
-        startupLogger.LogInformation("Database migrations applied successfully.");
+        if (autoMigrateOnStartup)
+        {
+            dbContext.Database.Migrate();
+            startupLogger.LogInformation("Database migrations applied successfully.");
+        }
+        else
+        {
+            startupLogger.LogInformation("Skipping automatic migrations in Development. Set AutoMigrateOnStartup=true to enable.");
+        }
     }
     catch (MySqlException ex)
     {
