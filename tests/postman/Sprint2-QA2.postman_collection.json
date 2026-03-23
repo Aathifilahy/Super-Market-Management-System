@@ -1,0 +1,235 @@
+{
+  "info": {
+    "name": "Sprint 2 QA2 API Tests",
+    "_postman_id": "b8c5cf70-7289-44ea-b4a6-86c095d18e28",
+    "description": "Auth + Cart + Orders API test flow for Sprint 2.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Register",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"QA2 Test User\",\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"{{testPassword}}\",\n  \"confirmPassword\": \"{{testPassword}}\",\n  \"role\": \"Customer\",\n  \"address\": \"123 Test St\",\n  \"phone\": \"0712345678\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "auth", "register"] }
+      }
+    },
+    {
+      "name": "2. Login",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Login status is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "const json = pm.response.json();",
+              "if (json && json.token) {",
+              "    pm.collectionVariables.set('jwtToken', json.token);",
+              "}",
+              "if (json && json.user && json.user.id) {",
+              "    pm.collectionVariables.set('userId', json.user.id);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"{{testPassword}}\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+      }
+    },
+    {
+      "name": "3. Get Profile",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{jwtToken}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/auth/profile", "host": ["{{baseUrl}}"], "path": ["api", "auth", "profile"] }
+      }
+    },
+    {
+      "name": "4. Update Profile",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{jwtToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"QA2 Test User Updated\",\n  \"address\": \"456 Update Ave\",\n  \"phone\": \"0771234567\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/auth/profile", "host": ["{{baseUrl}}"], "path": ["api", "auth", "profile"] }
+      }
+    },
+    {
+      "name": "5. Change Password",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{jwtToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"currentPassword\": \"{{testPassword}}\",\n  \"newPassword\": \"{{newTestPassword}}\",\n  \"confirmNewPassword\": \"{{newTestPassword}}\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/auth/change-password", "host": ["{{baseUrl}}"], "path": ["api", "auth", "change-password"] }
+      }
+    },
+    {
+      "name": "6. Get Cart",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{jwtToken}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/cart", "host": ["{{baseUrl}}"], "path": ["api", "cart"] }
+      }
+    },
+    {
+      "name": "7. Add Cart Item",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "    const json = pm.response.json();",
+              "    if (json && json.items && json.items.length) {",
+              "        pm.collectionVariables.set('cartItemId', json.items[0].id);",
+              "    }",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{jwtToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"productId\": {{testProductId}},\n  \"quantity\": 2\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/cart/items", "host": ["{{baseUrl}}"], "path": ["api", "cart", "items"] }
+      }
+    },
+    {
+      "name": "8. Update Cart Item",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{jwtToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"productId\": {{testProductId}},\n  \"quantity\": 3\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/cart/items/{{cartItemId}}", "host": ["{{baseUrl}}"], "path": ["api", "cart", "items", "{{cartItemId}}"] }
+      }
+    },
+    {
+      "name": "9. Delete Cart Item",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{jwtToken}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/cart/items/{{cartItemId}}", "host": ["{{baseUrl}}"], "path": ["api", "cart", "items", "{{cartItemId}}"] }
+      }
+    },
+    {
+      "name": "10. Clear Cart",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{jwtToken}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/cart/clear", "host": ["{{baseUrl}}"], "path": ["api", "cart", "clear"] }
+      }
+    },
+    {
+      "name": "11. Place Order",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 201) {",
+              "    const json = pm.response.json();",
+              "    if (json && json.id) {",
+              "        pm.collectionVariables.set('orderId', json.id);",
+              "    }",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{jwtToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"shippingAddress\": \"123 Test St, City, Country\",\n  \"paymentMethod\": \"Credit Card\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/orders", "host": ["{{baseUrl}}"], "path": ["api", "orders"] }
+      }
+    },
+    {
+      "name": "12. Get Orders",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{jwtToken}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/orders", "host": ["{{baseUrl}}"], "path": ["api", "orders"] }
+      }
+    },
+    {
+      "name": "13. Get Order By Id",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{jwtToken}}" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/orders/{{orderId}}", "host": ["{{baseUrl}}"], "path": ["api", "orders", "{{orderId}}"] }
+      }
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5224" },
+    { "key": "testEmail", "value": "qa2.postman@example.com" },
+    { "key": "testPassword", "value": "Test1234!" },
+    { "key": "newTestPassword", "value": "Test12345!" },
+    { "key": "testProductId", "value": "1" },
+    { "key": "jwtToken", "value": "" },
+    { "key": "cartItemId", "value": "1" },
+    { "key": "orderId", "value": "1" }
+  ]
+}

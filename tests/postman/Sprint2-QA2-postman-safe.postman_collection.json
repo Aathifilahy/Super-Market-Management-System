@@ -1,0 +1,52 @@
+{
+  "info": {
+    "name": "Sprint 2 QA2 API Tests (Safe Import)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Register",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"QA2 Test User\",\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"{{testPassword}}\",\n  \"confirmPassword\": \"{{testPassword}}\",\n  \"role\": \"Customer\",\n  \"address\": \"123 Test St\",\n  \"phone\": \"0712345678\"\n}"
+        },
+        "url": "{{baseUrl}}/api/auth/register"
+      }
+    },
+    {
+      "name": "2. Login",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"{{testPassword}}\"\n}"
+        },
+        "url": "{{baseUrl}}/api/auth/login"
+      }
+    },
+    { "name": "3. Get Profile", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{jwtToken}}" }], "url": "{{baseUrl}}/api/auth/profile" } },
+    { "name": "4. Update Profile", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{jwtToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"QA2 Test User Updated\",\n  \"address\": \"456 Update Ave\",\n  \"phone\": \"0771234567\"\n}" }, "url": "{{baseUrl}}/api/auth/profile" } },
+    { "name": "5. Change Password", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{jwtToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"currentPassword\": \"{{testPassword}}\",\n  \"newPassword\": \"{{newTestPassword}}\",\n  \"confirmNewPassword\": \"{{newTestPassword}}\"\n}" }, "url": "{{baseUrl}}/api/auth/change-password" } },
+    { "name": "6. Get Cart", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{jwtToken}}" }], "url": "{{baseUrl}}/api/cart" } },
+    { "name": "7. Add Cart Item", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{jwtToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"productId\": 1,\n  \"quantity\": 2\n}" }, "url": "{{baseUrl}}/api/cart/items" } },
+    { "name": "8. Update Cart Item", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{jwtToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"productId\": 1,\n  \"quantity\": 3\n}" }, "url": "{{baseUrl}}/api/cart/items/{{cartItemId}}" } },
+    { "name": "9. Delete Cart Item", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{jwtToken}}" }], "url": "{{baseUrl}}/api/cart/items/{{cartItemId}}" } },
+    { "name": "10. Clear Cart", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{jwtToken}}" }], "url": "{{baseUrl}}/api/cart/clear" } },
+    { "name": "11. Place Order", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{jwtToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"shippingAddress\": \"123 Test St, City, Country\",\n  \"paymentMethod\": \"Credit Card\"\n}" }, "url": "{{baseUrl}}/api/orders" } },
+    { "name": "12. Get Orders", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{jwtToken}}" }], "url": "{{baseUrl}}/api/orders" } },
+    { "name": "13. Get Order By Id", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{jwtToken}}" }], "url": "{{baseUrl}}/api/orders/{{orderId}}" } }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5224" },
+    { "key": "testEmail", "value": "qa2.postman@example.com" },
+    { "key": "testPassword", "value": "Test1234!" },
+    { "key": "newTestPassword", "value": "Test12345!" },
+    { "key": "jwtToken", "value": "" },
+    { "key": "cartItemId", "value": "1" },
+    { "key": "orderId", "value": "1" }
+  ]
+}
