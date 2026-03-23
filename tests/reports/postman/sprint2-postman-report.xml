@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="Sprint 2 QA2 API Tests" tests="13" time="1.022">
+  <testsuite name="1. Register" id="6ae6e1c2-e367-4c71-b83e-8151744aa0cf" timestamp="2026-03-23T16:01:09.016Z" tests="0" failures="0" errors="0" time="0.267"/>
+  <testsuite name="2. Login" id="e05d1405-7279-4e8b-88e1-302dac641528" timestamp="2026-03-23T16:01:09.016Z" tests="1" failures="0" errors="0" time="0.194">
+    <testcase name="Login status is 200" time="0.194" classname="2Login"/>
+  </testsuite>
+  <testsuite name="3. Get Profile" id="30bfb8c5-84d5-4a13-99d9-0937d18b5aa1" timestamp="2026-03-23T16:01:09.016Z" tests="0" failures="0" errors="0" time="0.015"/>
+  <testsuite name="4. Update Profile" id="477cbd1c-78d3-4272-a67d-190b03d39240" timestamp="2026-03-23T16:01:09.016Z" tests="0" failures="0" errors="0" time="0.028"/>
+  <testsuite name="5. Change Password" id="e2612cdd-489c-4663-9b22-503b247aea32" timestamp="2026-03-23T16:01:09.016Z" tests="0" failures="0" errors="0" time="0.410"/>
+  <testsuite name="6. Get Cart" id="70be3eb7-9b3e-4762-90bf-2261009b93b6" timestamp="2026-03-23T16:01:09.016Z" tests="0" failures="0" errors="0" time="0.017"/>
+  <testsuite name="7. Add Cart Item" id="195455c8-b353-4de9-bcfc-24dfe531f03f" timestamp="2026-03-23T16:01:09.016Z" tests="0" failures="0" errors="0" time="0.022"/>
+  <testsuite name="8. Update Cart Item" id="f621b017-089e-4498-9ebb-b743d43e4bd1" timestamp="2026-03-23T16:01:09.016Z" tests="0" failures="0" errors="0" time="0.009"/>
+  <testsuite name="9. Delete Cart Item" id="d3b0d8ce-2e84-4b3e-8ca1-0409fa60465e" timestamp="2026-03-23T16:01:09.016Z" tests="0" failures="0" errors="0" time="0.009"/>
+  <testsuite name="10. Clear Cart" id="bc4a1b26-d4e9-479d-a167-9682c173dd39" timestamp="2026-03-23T16:01:09.016Z" tests="0" failures="0" errors="0" time="0.026"/>
+  <testsuite name="11. Place Order" id="34f9e2d7-b9bd-443a-b040-429132618fc9" timestamp="2026-03-23T16:01:09.016Z" tests="0" failures="0" errors="0" time="0.007"/>
+  <testsuite name="12. Get Orders" id="78005572-8be1-4f8b-b149-8cf0e04cc2e3" timestamp="2026-03-23T16:01:09.016Z" tests="0" failures="0" errors="0" time="0.011"/>
+  <testsuite name="13. Get Order By Id" id="02511ecd-41b0-4360-a32f-1839fa5c96e4" timestamp="2026-03-23T16:01:09.016Z" tests="0" failures="0" errors="0" time="0.007"/>
+</testsuites>

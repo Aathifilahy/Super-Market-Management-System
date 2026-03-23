@@ -1,0 +1,47 @@
+{
+  "generatedAt": "2026-03-23T16:04:01.103Z",
+  "apiBaseUrl": "http://localhost:5224/api",
+  "slowerThan500ms": [],
+  "results": [
+    {
+      "name": "GET /api/products",
+      "iterations": 5,
+      "min": 7.1008999943733215,
+      "max": 12.00059999525547,
+      "avg": 9.698419997096062,
+      "slowerThan500ms": false
+    },
+    {
+      "name": "GET /api/products/{id}",
+      "iterations": 5,
+      "min": 7.481000006198883,
+      "max": 14.582000002264977,
+      "avg": 10.047540000081062,
+      "slowerThan500ms": false
+    },
+    {
+      "name": "POST /api/auth/login",
+      "iterations": 5,
+      "min": 11.924799993634224,
+      "max": 20.015900000929832,
+      "avg": 16.465580001473427,
+      "slowerThan500ms": false
+    },
+    {
+      "name": "GET /api/cart",
+      "iterations": 5,
+      "min": 2.9282000064849854,
+      "max": 4.409700006246567,
+      "avg": 3.6923600018024443,
+      "slowerThan500ms": false
+    },
+    {
+      "name": "GET /api/orders",
+      "iterations": 5,
+      "min": 2.2656999975442886,
+      "max": 3.883100003004074,
+      "avg": 2.9968800008296967,
+      "slowerThan500ms": false
+    }
+  ]
+}

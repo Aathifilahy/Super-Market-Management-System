@@ -5,6 +5,26 @@
     "description": "Auth + Cart + Orders API test flow for Sprint 2.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const existingRunEmail = pm.collectionVariables.get('runEmail');",
+          "if (existingRunEmail) {",
+          "  pm.collectionVariables.set('testEmail', existingRunEmail);",
+          "} else {",
+          "  const runEmail = `qa2.postman.${Date.now()}@example.com`;",
+          "  pm.collectionVariables.set('runEmail', runEmail);",
+          "  pm.collectionVariables.set('testEmail', runEmail);",
+          "}",
+          "pm.collectionVariables.set('testPassword', pm.collectionVariables.get('testPassword') || 'Test1234!');",
+          "pm.collectionVariables.set('newTestPassword', pm.collectionVariables.get('newTestPassword') || 'Test12345!');"
+        ]
+      }
+    }
+  ],
   "item": [
     {
       "name": "1. Register",

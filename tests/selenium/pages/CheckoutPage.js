@@ -6,15 +6,15 @@ class CheckoutPage {
   }
 
   get addressInput() {
-    return By.css("textarea[name='shippingAddress'], textarea[name='address']");
+    return By.xpath("//textarea | //label[contains(., 'Shipping Address')]/following::textarea[1]");
   }
 
-  get paymentInput() {
-    return By.css("input[name='paymentMethod'], input[name='payment']");
+  get paymentMethodOption() {
+    return By.xpath("//label[contains(., 'Cash on Delivery')] | //label[contains(., 'Card')] | //label[contains(., 'Bank Transfer')]");
   }
 
   get placeOrderButton() {
-    return By.css("button[type='submit'], button[data-testid='place-order-btn']");
+    return By.xpath("//button[contains(., 'Place Order')]");
   }
 
   async navigate(baseUrl) {
@@ -22,15 +22,36 @@ class CheckoutPage {
   }
 
   async submitOrder({ shippingAddress, paymentMethod }) {
-    const address = await this.driver.findElement(this.addressInput);
+    const addressCandidates = await this.driver.findElements(this.addressInput);
+    if (addressCandidates.length === 0) {
+      throw new Error('Shipping address input not found on checkout page.');
+    }
+
+    const address = addressCandidates[0];
     await address.clear();
     await address.sendKeys(shippingAddress);
 
-    const payment = await this.driver.findElement(this.paymentInput);
-    await payment.clear();
-    await payment.sendKeys(paymentMethod);
+    const paymentOptions = await this.driver.findElements(this.paymentMethodOption);
+    if (paymentOptions.length > 0) {
+      if (typeof paymentMethod === 'string' && paymentMethod.toLowerCase().includes('card')) {
+        for (const option of paymentOptions) {
+          const text = await option.getText();
+          if (text.toLowerCase().includes('card')) {
+            await option.click();
+            break;
+          }
+        }
+      } else {
+        await paymentOptions[0].click();
+      }
+    }
 
-    await this.driver.findElement(this.placeOrderButton).click();
+    const placeOrderButtons = await this.driver.findElements(this.placeOrderButton);
+    if (placeOrderButtons.length === 0) {
+      throw new Error('Place Order button not found on checkout page.');
+    }
+
+    await placeOrderButtons[0].click();
   }
 }
 

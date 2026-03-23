@@ -14,7 +14,7 @@ class CartPage {
   }
 
   get checkoutButton() {
-    return By.css("a[href='/checkout'], button[data-testid='checkout-btn']");
+    return By.xpath("//button[contains(., 'Proceed to Checkout')] | //a[@href='/checkout']");
   }
 
   async navigate(baseUrl) {
@@ -39,7 +39,12 @@ class CartPage {
   }
 
   async goToCheckout() {
-    const btn = await this.driver.findElement(this.checkoutButton);
+    const buttons = await this.driver.findElements(this.checkoutButton);
+    if (buttons.length === 0) {
+      throw new Error('Checkout button not found on cart page.');
+    }
+
+    const btn = buttons[0];
     await btn.click();
   }
 }

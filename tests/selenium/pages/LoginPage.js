@@ -21,13 +21,48 @@ class LoginPage {
     return By.css("button[type='submit']");
   }
 
+  async findFirst(locators) {
+    for (const locator of locators) {
+      const elements = await this.driver.findElements(locator);
+      if (elements.length > 0) {
+        return elements[0];
+      }
+    }
+
+    throw new Error('No matching element found for provided locators.');
+  }
+
+  async findEmailInput() {
+    return this.findFirst([
+      By.css("input[name='email']"),
+      By.css("input[type='email']")
+    ]);
+  }
+
+  async findPasswordInput() {
+    return this.findFirst([
+      By.css("input[name='password']"),
+      By.css('#login-password'),
+      By.css("input[type='password']")
+    ]);
+  }
+
+  async findSubmitButton() {
+    return this.findFirst([
+      By.css("button[type='submit']"),
+      By.xpath("//button[contains(., 'Sign In')]")
+    ]);
+  }
+
   async navigate(baseUrl, isAdmin = false) {
     await this.driver.get(`${baseUrl}${isAdmin ? '/admin/login' : '/login'}`);
   }
 
   async login(email, password, rememberMe = true) {
-    await this.driver.findElement(this.emailInput).sendKeys(email);
-    await this.driver.findElement(this.passwordInput).sendKeys(password);
+    const emailInput = await this.findEmailInput();
+    const passwordInput = await this.findPasswordInput();
+    await emailInput.sendKeys(email);
+    await passwordInput.sendKeys(password);
 
     const checkbox = await this.driver.findElement(this.rememberMeCheckbox);
     const checked = await checkbox.isSelected();
@@ -35,7 +70,8 @@ class LoginPage {
       await checkbox.click();
     }
 
-    await this.driver.findElement(this.submitButton).click();
+    const submitButton = await this.findSubmitButton();
+    await submitButton.click();
   }
 }
 

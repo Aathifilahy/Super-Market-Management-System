@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { Builder, By, until } = require('selenium-webdriver');
 const chrome = require('selenium-webdriver/chrome');
+const chromedriver = require('chromedriver');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 const DEFAULT_TIMEOUT = 15000;
@@ -13,8 +14,16 @@ function buildDriver({ headless = false } = {}) {
   }
   options.addArguments('--window-size=1440,900');
   options.addArguments('--disable-search-engine-choice-screen');
+  options.addArguments('--disable-dev-shm-usage');
+  options.addArguments('--no-sandbox');
 
-  return new Builder().forBrowser('chrome').setChromeOptions(options).build();
+  const service = new chrome.ServiceBuilder(chromedriver.path);
+
+  return new Builder()
+    .forBrowser('chrome')
+    .setChromeOptions(options)
+    .setChromeService(service)
+    .build();
 }
 
 async function waitForVisible(driver, locator, timeout = DEFAULT_TIMEOUT) {
