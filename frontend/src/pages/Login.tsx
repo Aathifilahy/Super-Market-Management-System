@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Box,
@@ -21,15 +21,55 @@ import {
 } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import { SubmitHandler, useForm } from 'react-hook-form';
 import { LoginFormData } from '../types/auth';
 import { useAuth } from '../hooks/useAuth';
+import { isAdminOrInventoryRole, isCustomerRole, normalizeRole } from '../utils/role';
 
 function Login() {
   const navigate = useNavigate();
-  const { login, isLoading, error, clearError } = useAuth();
+  const location = useLocation();
+  const { login, logout, isLoading, error, clearError, user, isAuthenticated } = useAuth();
+  const isAdminLogin = location.pathname === '/admin/login';
   const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    if (!isAuthenticated || !user) {
+      return;
+    }
+
+    const role = normalizeRole(user.role);
+    const isAdminOrInventory = isAdminOrInventoryRole(user.role);
+    const isCustomer = isCustomerRole(user.role);
+
+    if (isAdminLogin && !isAdminOrInventory) {
+      logout();
+      window.alert('This account is not authorized for Admin/Staff access.');
+      navigate('/start', { replace: true });
+      return;
+    }
+
+    if (!isAdminLogin && !isCustomer) {
+      logout();
+      window.alert('This account is not authorized for Customer access.');
+      navigate('/start', { replace: true });
+      return;
+    }
+
+    const from = (location.state as { from?: unknown } | null)?.from;
+    if (typeof from === 'string' && from.startsWith('/')) {
+      navigate(from, { replace: true });
+      return;
+    }
+
+    if (isAdminOrInventory) {
+      navigate('/admin/products', { replace: true });
+      return;
+    }
+
+    navigate('/shop', { replace: true });
+  }, [isAuthenticated, user, isAdminLogin, location.state, navigate, logout]);
 
   const {
     register,
@@ -49,7 +89,6 @@ function Login() {
 
     try {
       await login(data);
-      navigate('/');
     } catch {
       // Error is handled by auth context state.
     }
@@ -62,10 +101,12 @@ function Login() {
           <Stack spacing={3}>
             <Box>
               <Typography variant="h4" fontWeight={700} gutterBottom>
-                Welcome back
+                {isAdminLogin ? 'Admin / Staff Sign In' : 'Welcome back'}
               </Typography>
               <Typography color="text.secondary">
-                Sign in to access your account, cart, and orders.
+                {isAdminLogin
+                  ? 'Sign in to manage inventory.'
+                  : 'Sign in to access your account, cart, and orders.'}
               </Typography>
             </Box>
 
@@ -137,7 +178,7 @@ function Login() {
 
             <Typography variant="body2" color="text.secondary" textAlign="center">
               Don&apos;t have an account?{' '}
-              <Link component={RouterLink} to="/register" underline="hover" fontWeight={600}>
+              <Link component={RouterLink} to={isAdminLogin ? '/admin/register' : '/register'} underline="hover" fontWeight={600}>
                 Register here
               </Link>
             </Typography>

@@ -209,9 +209,12 @@ If your local database is fresh, run migrations for EF-managed schema and execut
 - GET /api/products/{id}
 - GET /api/products/category/{category}
 - GET /api/products/lowstock?threshold=10
-- POST /api/products
-- PUT /api/products/{id}
-- DELETE /api/products/{id}
+
+### Products (admin/staff only)
+
+- POST /api/products (Admin, InventoryManager)
+- PUT /api/products/{id} (Admin, InventoryManager)
+- DELETE /api/products/{id} (Admin, InventoryManager)
 
 ### Auth
 
@@ -237,9 +240,11 @@ If your local database is fresh, run migrations for EF-managed schema and execut
 
 ## Frontend Routes
 
-- /
-- /add-product
-- /edit-product/:id
+- / (Landing)
+- /shop (Customer storefront)
+- /admin/products (Inventory list)
+- /add-product (Admin/InventoryManager)
+- /edit-product/:id (Admin/InventoryManager)
 - /register
 - /login
 - /profile
@@ -297,6 +302,25 @@ Suggested verification flow:
 - Do not commit real production secrets to appsettings.json.
 - Move JWT key and database credentials to environment variables or secret manager for production.
 - Use HTTPS and secure cookie/token strategies in production environments.
+
+### Dev note: create an Admin user (local)
+
+Sprint 2 customer registration always creates a Customer account. For local testing of inventory actions,
+promote a user to Admin directly in MySQL.
+
+In the Users table the Role is stored as an integer enum:
+
+- 0 = Customer
+- 1 = Admin
+- 2 = InventoryManager
+- 3 = Cashier
+
+Example:
+
+~~~sql
+SELECT id, email, role FROM users;
+UPDATE users SET role = 1 WHERE email = 'admin@gmail.com';
+~~~
 
 ## License
 

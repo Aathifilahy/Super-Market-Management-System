@@ -56,6 +56,22 @@ function parseApiError(error: unknown): string {
       if (typeof message === 'string' && message.trim().length > 0) {
         return message;
       }
+
+      const validationErrors = (data as { errors?: Record<string, string[] | string> }).errors;
+      if (validationErrors && typeof validationErrors === 'object') {
+        const messages = Object.values(validationErrors)
+          .flatMap((value) => (Array.isArray(value) ? value : [value]))
+          .filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
+
+        if (messages.length > 0) {
+          return messages.join(' ');
+        }
+      }
+
+      const title = (data as { title?: unknown }).title;
+      if (typeof title === 'string' && title.trim().length > 0) {
+        return title;
+      }
     }
 
     if (error.message) {
@@ -71,15 +87,11 @@ function parseApiError(error: unknown): string {
 }
 
 function saveAuthToStorage(token: string, user: User, persistMode: PersistMode): void {
-  const targetStorage = persistMode === 'local' ? localStorage : sessionStorage;
-  const otherStorage = persistMode === 'local' ? sessionStorage : localStorage;
-
-  targetStorage.setItem(STORAGE_KEY_TOKEN, token);
-  targetStorage.setItem(STORAGE_KEY_USER, JSON.stringify(user));
-  localStorage.setItem(STORAGE_KEY_PERSIST, persistMode);
-
-  otherStorage.removeItem(STORAGE_KEY_TOKEN);
-  otherStorage.removeItem(STORAGE_KEY_USER);
+  sessionStorage.setItem(STORAGE_KEY_TOKEN, token);
+  sessionStorage.setItem(STORAGE_KEY_USER, JSON.stringify(user));
+  localStorage.removeItem(STORAGE_KEY_TOKEN);
+  localStorage.removeItem(STORAGE_KEY_USER);
+  localStorage.removeItem(STORAGE_KEY_PERSIST);
 }
 
 function clearAuthFromStorage(): void {
@@ -91,11 +103,8 @@ function clearAuthFromStorage(): void {
 }
 
 function readAuthFromStorage(): { token: string; user: User } | null {
-  const persistMode = (localStorage.getItem(STORAGE_KEY_PERSIST) as PersistMode | null) ?? 'session';
-  const sourceStorage = persistMode === 'local' ? localStorage : sessionStorage;
-
-  const token = sourceStorage.getItem(STORAGE_KEY_TOKEN);
-  const userRaw = sourceStorage.getItem(STORAGE_KEY_USER);
+  const token = sessionStorage.getItem(STORAGE_KEY_TOKEN);
+  const userRaw = sessionStorage.getItem(STORAGE_KEY_USER);
 
   if (!token || !userRaw) {
     return null;
@@ -110,7 +119,7 @@ function readAuthFromStorage(): { token: string; user: User } | null {
 }
 
 function getPersistMode(): PersistMode {
-  return (localStorage.getItem(STORAGE_KEY_PERSIST) as PersistMode | null) ?? 'session';
+  return 'session';
 }
 
 export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
@@ -169,6 +178,13 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
       scheduleAutoLogout(nextToken);
     },
     [scheduleAutoLogout]
+  );
+
+  const setAuthForContext = useCallback(
+    (nextUser: User, nextToken: string) => {
+      setAuth(nextUser, nextToken);
+    },
+    [setAuth]
   );
 
   const login = useCallback(
@@ -269,10 +285,10 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
       login,
       register,
       logout,
-      setAuth: (nextUser, nextToken) => setAuth(nextUser, nextToken),
+      setAuth: setAuthForContext,
       clearError,
     }),
-    [user, token, isLoading, error, login, register, logout, setAuth, clearError]
+    [user, token, isLoading, error, login, register, logout, setAuthForContext, clearError]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
