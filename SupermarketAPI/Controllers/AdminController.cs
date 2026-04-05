@@ -1,0 +1,132 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using SupermarketAPI.Data;
+using SupermarketAPI.Models.DTOs;
+
+namespace SupermarketAPI.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class AdminController : ControllerBase
+{
+    private readonly ApplicationDbContext _dbContext;
+    private readonly IConfiguration _configuration;
+    private readonly ILogger<AdminController> _logger;
+
+    public AdminController(
+        ApplicationDbContext dbContext,
+        IConfiguration configuration,
+        ILogger<AdminController> logger)
+    {
+        _dbContext = dbContext;
+        _configuration = configuration;
+        _logger = logger;
+    }
+
+    [HttpPost("users")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<UserResponseDto>> CreateStaffUser([FromBody] CreateStaffUserDto dto)
+    {
+        try
+        {
+            var supervisorEmail = _configuration["Supervisor:Email"]?.Trim();
+            if (string.IsNullOrWhiteSpace(supervisorEmail))
+            {
+                _logger.LogWarning("Supervisor:Email is not configured. Blocking staff user creation.");
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = "Supervisor access is not configured." });
+            }
+
+            var callerEmail = GetCurrentUserEmail();
+            if (string.IsNullOrWhiteSpace(callerEmail) ||
+                !string.Equals(callerEmail.Trim(), supervisorEmail, StringComparison.OrdinalIgnoreCase))
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = "Only the configured supervisor can create staff users." });
+            }
+
+            if (!Enum.IsDefined(typeof(UserRole), dto.Role))
+            {
+                return BadRequest(new { message = "Invalid role value." });
+            }
+
+            if (dto.Role == UserRole.Customer)
+            {
+                return BadRequest(new { message = "Customer role is not allowed for this endpoint." });
+            }
+
+            if (dto.Role is not UserRole.Admin and not UserRole.InventoryManager and not UserRole.Cashier)
+            {
+                return BadRequest(new { message = "Only Admin, InventoryManager, or Cashier roles are allowed." });
+            }
+
+            var normalizedEmail = dto.Email.Trim().ToLowerInvariant();
+
+            var existingUser = await _dbContext.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Email == normalizedEmail);
+
+            if (existingUser is not null)
+            {
+                return Conflict(new { message = "Email already exists." });
+            }
+
+            var user = new User
+            {
+                Name = dto.Name.Trim(),
+                Email = normalizedEmail,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
+                Role = dto.Role,
+                Address = string.IsNullOrWhiteSpace(dto.Address) ? null : dto.Address.Trim(),
+                Phone = string.IsNullOrWhiteSpace(dto.Phone) ? null : dto.Phone.Trim(),
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true
+            };
+
+            _dbContext.Users.Add(user);
+            await _dbContext.SaveChangesAsync();
+
+            var response = ToUserResponse(user);
+            return StatusCode(StatusCodes.Status201Created, response);
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Error occurred while creating staff user {Email}.", dto.Email);
+            return Conflict(new { message = "Unable to create staff user. Email may already exist." });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error occurred while creating staff user {Email}.", dto.Email);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An unexpected error occurred." });
+        }
+    }
+
+    private string? GetCurrentUserEmail()
+    {
+        return User.FindFirstValue(JwtRegisteredClaimNames.Email)
+            ?? User.FindFirstValue(ClaimTypes.Email)
+            ?? User.FindFirstValue("email");
+    }
+
+    private static UserResponseDto ToUserResponse(User user)
+    {
+        return new UserResponseDto
+        {
+            Id = user.Id,
+            Name = user.Name,
+            Email = user.Email,
+            Role = user.Role,
+            Address = user.Address,
+            Phone = user.Phone,
+            CreatedAt = user.CreatedAt,
+            UpdatedAt = user.UpdatedAt,
+            IsActive = user.IsActive
+        };
+    }
+}
