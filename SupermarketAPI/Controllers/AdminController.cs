@@ -26,6 +26,68 @@ public class AdminController : ControllerBase
         _logger = logger;
     }
 
+    [HttpGet("users/staff")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(IEnumerable<UserResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<IEnumerable<UserResponseDto>>> GetStaffUsers([FromQuery] string? search = null)
+    {
+        try
+        {
+            var query = _dbContext.Users
+                .AsNoTracking()
+                .Where(u => u.Role != UserRole.Customer);
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim().ToLowerInvariant();
+                query = query.Where(u =>
+                    u.Name.ToLower().Contains(term) ||
+                    u.Email.ToLower().Contains(term) ||
+                    u.Role.ToString().ToLower().Contains(term));
+            }
+
+            var users = await query
+                .OrderBy(u => u.Name)
+                .Select(u => ToUserResponse(u))
+                .ToListAsync();
+
+            return Ok(users);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error occurred while fetching staff users.");
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An unexpected error occurred." });
+        }
+    }
+
+    [HttpGet("users/{id:int}")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<UserResponseDto>> GetStaffUserById(int id)
+    {
+        try
+        {
+            var user = await _dbContext.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == id && u.Role != UserRole.Customer);
+
+            if (user is null)
+            {
+                return NotFound(new { message = "Staff user not found." });
+            }
+
+            return Ok(ToUserResponse(user));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error occurred while fetching staff user {UserId}.", id);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An unexpected error occurred." });
+        }
+    }
+
     [HttpPost("users")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(UserResponseDto), StatusCodes.Status201Created)]
