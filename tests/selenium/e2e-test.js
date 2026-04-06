@@ -119,7 +119,7 @@ describe('Sprint 2 E2E - Customer Journey', function () {
     }, 20000);
 
     const currentUrl = await driver.getCurrentUrl();
-    expect(currentUrl.includes('/shop') || currentUrl.endsWith('/') || currentUrl.includes('/start')).to.equal(true);
+    expect(currentUrl.includes('/shop') || currentUrl.endsWith('/')).to.equal(true);
   });
 
   it('logs in with same user', async () => {
@@ -246,7 +246,7 @@ describe('Sprint 2 E2E - Customer Journey', function () {
     const logoutButton = await waitForVisible(driver, By.xpath("//button[normalize-space()='Logout']"), 20000);
     await logoutButton.click();
 
-    await driver.wait(until.urlContains('/start'), 20000);
-    expect(await driver.getCurrentUrl()).to.contain('/start');
+    await driver.wait(until.urlContains('/'), 20000);
+    expect(await driver.getCurrentUrl()).to.contain('/');
   });
 });

@@ -18,9 +18,13 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import { useSearchParams } from 'react-router-dom';
 import { SubmitHandler, useForm } from 'react-hook-form';
 import authApi, { ApiErrorResponse, ChangePasswordData, UpdateProfileData } from '../services/authApi';
+import { adminUsersApi } from '../services/adminUsersApi';
 import { useAuth } from '../hooks/useAuth';
+import { User } from '../types/auth';
+import { normalizeRole } from '../utils/role';
 
 type ProfileFormData = UpdateProfileData;
 
@@ -41,6 +45,7 @@ function getErrorMessage(error: unknown): string {
 
 function Profile() {
   const { user, token, isLoading: authLoading, setAuth } = useAuth();
+  const [searchParams] = useSearchParams();
   const [tab, setTab] = useState(0);
   const [pageLoading, setPageLoading] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
@@ -48,6 +53,13 @@ function Profile() {
   const [pageError, setPageError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [viewedUser, setViewedUser] = useState<User | null>(null);
+
+  const requestedUserId = Number(searchParams.get('userId'));
+  const isAdmin = normalizeRole(user?.role) === 'Admin';
+  const isStaffProfileView = isAdmin && Number.isFinite(requestedUserId) && requestedUserId > 0 && requestedUserId !== user?.id;
+  const activeProfileUser = viewedUser ?? user;
+  const isViewingAnotherProfile = Boolean(isStaffProfileView && viewedUser);
 
   const {
     register,
@@ -81,21 +93,72 @@ function Profile() {
   const newPassword = watch('newPassword', '');
 
   useEffect(() => {
-    if (!user) {
+    if (!activeProfileUser) {
       return;
     }
 
     reset({
-      name: user.name,
-      address: user.address ?? '',
-      phone: user.phone ?? '',
+      name: activeProfileUser.name,
+      address: activeProfileUser.address ?? '',
+      phone: activeProfileUser.phone ?? '',
     });
-  }, [user, reset]);
+  }, [activeProfileUser, reset]);
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadViewedStaffProfile() {
+      if (!isStaffProfileView) {
+        setViewedUser(null);
+        return;
+      }
+
+      if (!token) {
+        setPageLoading(false);
+        return;
+      }
+
+      try
+      {
+        setPageLoading(true);
+        setPageError(null);
+        const profile = await adminUsersApi.getStaffUserById(token, requestedUserId);
+
+        if (ignore) {
+          return;
+        }
+
+        setViewedUser(profile);
+      }
+      catch (error)
+      {
+        if (!ignore) {
+          setPageError(getErrorMessage(error));
+        }
+      }
+      finally
+      {
+        if (!ignore) {
+          setPageLoading(false);
+        }
+      }
+    }
+
+    void loadViewedStaffProfile();
+
+    return () => {
+      ignore = true;
+    };
+  }, [isStaffProfileView, requestedUserId, token]);
 
   useEffect(() => {
     let ignore = false;
 
     async function loadProfile() {
+      if (isStaffProfileView) {
+        return;
+      }
+
       if (!token) {
         setPageLoading(false);
         return;
@@ -132,9 +195,14 @@ function Profile() {
     return () => {
       ignore = true;
     };
-  }, [token, setAuth, reset]);
+  }, [isStaffProfileView, token, setAuth, reset]);
 
   const onSubmitProfile: SubmitHandler<ProfileFormData> = async (data) => {
+    if (isViewingAnotherProfile) {
+      setPageError('Profile updates for other users are not available on this page.');
+      return;
+    }
+
     if (!token) {
       setPageError('You must be logged in to update your profile.');
       return;
@@ -184,11 +252,11 @@ function Profile() {
 
   const identityRows = useMemo(
     () => [
-      { label: 'Email', value: user?.email ?? '-' },
-      { label: 'Role', value: String(user?.role ?? '-') },
-      { label: 'Status', value: user?.isActive ? 'Active' : 'Inactive' },
+      { label: 'Email', value: activeProfileUser?.email ?? '-' },
+      { label: 'Role', value: String(activeProfileUser?.role ?? '-') },
+      { label: 'Status', value: activeProfileUser?.isActive ? 'Active' : 'Inactive' },
     ],
-    [user]
+    [activeProfileUser]
   );
 
   if (authLoading || pageLoading) {
@@ -203,10 +271,12 @@ function Profile() {
     <Stack spacing={3}>
       <Box>
         <Typography variant="h4" fontWeight={700} gutterBottom>
-          My Account
+          {isViewingAnotherProfile ? 'Staff Profile' : 'My Account'}
         </Typography>
         <Typography color="text.secondary">
-          Manage your personal details and account security.
+          {isViewingAnotherProfile
+            ? 'Viewing selected staff profile details.'
+            : 'Manage your personal details and account security.'}
         </Typography>
       </Box>
 
@@ -227,7 +297,7 @@ function Profile() {
                   <CardContent>
                     <Stack spacing={1.5}>
                       <Typography variant="h6" fontWeight={700}>
-                        {user?.name ?? 'User'}
+                        {activeProfileUser?.name ?? 'User'}
                       </Typography>
                       {identityRows.map((row) => (
                         <Box key={row.label}>
@@ -238,9 +308,11 @@ function Profile() {
                         </Box>
                       ))}
                       <Divider sx={{ my: 1 }} />
-                      <Button variant="outlined" onClick={() => setPasswordDialogOpen(true)}>
-                        Change Password
-                      </Button>
+                      {!isViewingAnotherProfile ? (
+                        <Button variant="outlined" onClick={() => setPasswordDialogOpen(true)}>
+                          Change Password
+                        </Button>
+                      ) : null}
                     </Stack>
                   </CardContent>
                 </Card>
@@ -252,6 +324,7 @@ function Profile() {
                     <TextField
                       fullWidth
                       label="Name"
+                      disabled={isViewingAnotherProfile}
                       error={Boolean(errors.name)}
                       helperText={errors.name?.message ?? 'Displayed across your account.'}
                       {...register('name', {
@@ -264,6 +337,7 @@ function Profile() {
                     <TextField
                       fullWidth
                       label="Address"
+                      disabled={isViewingAnotherProfile}
                       multiline
                       minRows={3}
                       error={Boolean(errors.address)}
@@ -276,6 +350,7 @@ function Profile() {
                     <TextField
                       fullWidth
                       label="Phone"
+                      disabled={isViewingAnotherProfile}
                       error={Boolean(errors.phone)}
                       helperText={errors.phone?.message ?? 'Optional'}
                       {...register('phone', {
@@ -287,14 +362,16 @@ function Profile() {
                     />
 
                     <Stack direction="row" justifyContent="flex-end">
-                      <Button
-                        type="submit"
-                        variant="contained"
-                        disabled={savingProfile || !isDirty || !isValid}
-                        sx={{ minWidth: 180 }}
-                      >
-                        {savingProfile ? <CircularProgress size={24} color="inherit" /> : 'Save Changes'}
-                      </Button>
+                      {!isViewingAnotherProfile ? (
+                        <Button
+                          type="submit"
+                          variant="contained"
+                          disabled={savingProfile || !isDirty || !isValid}
+                          sx={{ minWidth: 180 }}
+                        >
+                          {savingProfile ? <CircularProgress size={24} color="inherit" /> : 'Save Changes'}
+                        </Button>
+                      ) : null}
                     </Stack>
                   </Stack>
                 </Box>

@@ -43,7 +43,10 @@ const ProductList: React.FC = () => {
   const navigate = useNavigate();
 
   const isAdminOrInventory = isAdminOrInventoryRole(user?.role);
-  const isInventoryRoute = useMemo(() => location.pathname.startsWith('/admin'), [location.pathname]);
+  const isInventoryRoute = useMemo(
+    () => location.pathname.startsWith('/admin') || location.pathname.startsWith('/inventory'),
+    [location.pathname]
+  );
   const showInventoryActions = isAdminOrInventory && isInventoryRoute;
 
   useEffect(() => {

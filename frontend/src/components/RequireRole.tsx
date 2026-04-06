@@ -17,7 +17,7 @@ export default function RequireRole({
   }
 
   if (!isAuthenticated || !user) {
-    return <Navigate to="/start" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   const role = normalizeRole(user.role);
