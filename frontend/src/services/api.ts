@@ -2,8 +2,7 @@ import axios from 'axios';
 import { Product, CreateProductDto, UpdateProductDto } from '../types/Product';
 
 const API_BASE_URL =
-  (globalThis as { process?: { env?: { REACT_APP_API_BASE_URL?: string } } })
-    .process?.env?.REACT_APP_API_BASE_URL?.trim() || 'http://localhost:5224/api';
+  process.env.REACT_APP_API_BASE_URL?.trim() || 'http://localhost:5224/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
