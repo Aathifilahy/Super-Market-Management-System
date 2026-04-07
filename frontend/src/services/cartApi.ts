@@ -66,7 +66,7 @@ export const cartApi = {
       const existingItem = currentCart.items.find((item) => item.id === itemId);
 
       if (!existingItem) {
-        throw { message: 'Cart item not found.', status: 404 } as CartApiError;
+        throw new Error('Cart item not found.');
       }
 
       const payload: UpdateCartItemRequest = {

@@ -77,13 +77,27 @@ function Register() {
   });
 
   const password = watch('password', '');
+  const watchedName = watch('name', '');
+  const watchedEmail = watch('email', '');
+  const watchedConfirmPassword = watch('confirmPassword', '');
+  const watchedAddress = watch('address', '');
+  const watchedPhone = watch('phone', '');
   const passwordStrength = useMemo(() => getPasswordStrength(password), [password]);
 
   useEffect(() => {
     if (error) {
       clearError();
     }
-  }, [watch('name'), watch('email'), watch('password'), watch('confirmPassword'), watch('address'), watch('phone')]);
+  }, [
+    watchedName,
+    watchedEmail,
+    password,
+    watchedConfirmPassword,
+    watchedAddress,
+    watchedPhone,
+    error,
+    clearError,
+  ]);
 
   const onSubmit: SubmitHandler<RegisterFormData> = async (data) => {
     try {

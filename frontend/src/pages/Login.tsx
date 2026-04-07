@@ -39,7 +39,7 @@ function Login() {
       return;
     }
 
-    const role = normalizeRole(user.role);
+    normalizeRole(user.role);
     const isAdminOrInventory = isAdminOrInventoryRole(user.role);
     const isCustomer = isCustomerRole(user.role);
 

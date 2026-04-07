@@ -69,6 +69,7 @@ nunit-*.xml
 **/node_modules/
 **/package-lock.json
 **/yarn.lock
+!frontend/package-lock.json
 
 # production builds
 **/build/
