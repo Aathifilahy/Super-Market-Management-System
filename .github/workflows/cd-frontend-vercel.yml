@@ -31,7 +31,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: frontend
-        run: npm ci
+        run: npm ci || npm install --no-audit --no-fund
 
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
