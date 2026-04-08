@@ -53,7 +53,8 @@ public class AuthController : ControllerBase
                 Name = dto.Name.Trim(),
                 Email = normalizedEmail,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
-                Role = dto.Role,
+                // Ignore client-supplied role to prevent privilege escalation during self-registration.
+                Role = UserRole.Customer,
                 Address = string.IsNullOrWhiteSpace(dto.Address) ? null : dto.Address.Trim(),
                 Phone = string.IsNullOrWhiteSpace(dto.Phone) ? null : dto.Phone.Trim(),
                 CreatedAt = DateTime.UtcNow,

@@ -4,6 +4,7 @@ export interface Product {
   category: string;
   price: number;
   quantity: number;
+  lowStockThreshold?: number | null;
   expiryDate: string;
   imageUrl?: string;
   createdAt: string;
@@ -17,6 +18,7 @@ export interface CreateProductDto {
   category: string;
   price: number;
   quantity: number;
+  lowStockThreshold?: number;
   expiryDate: string;
   imageUrl?: string;
 }

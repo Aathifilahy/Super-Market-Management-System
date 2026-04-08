@@ -9,6 +9,7 @@ using SupermarketAPI.Interfaces;
 using SupermarketAPI.Repositories;
 using SupermarketAPI.Services;
 using SupermarketAPI.Settings;
+using SupermarketAPI.Models.DTOs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,7 +18,7 @@ var frontendOrigins = builder.Configuration["FRONTEND_URLS"]?
 
 if (frontendOrigins is null || frontendOrigins.Length == 0)
 {
-    frontendOrigins = new[] { "http://localhost:3000" };
+    frontendOrigins = new[] { "http://localhost:3000", "http://localhost:3001" };
 }
 
 builder.Services.AddCors(options =>
@@ -146,6 +147,77 @@ if (app.Environment.IsProduction())
     {
         startupLogger.LogError(ex, "An error occurred while applying EF Core migrations on startup.");
         throw;
+    }
+}
+
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    var startupLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    try
+    {
+        var supervisorEmail = builder.Configuration["Supervisor:Email"]?.Trim().ToLowerInvariant();
+        var supervisorPassword = builder.Configuration["Supervisor:Password"];
+        var supervisorName = builder.Configuration["Supervisor:Name"]?.Trim();
+
+        if (string.IsNullOrWhiteSpace(supervisorEmail) || string.IsNullOrWhiteSpace(supervisorPassword))
+        {
+            startupLogger.LogInformation("Skipping supervisor seeding because Supervisor:Email or Supervisor:Password is missing.");
+        }
+        else
+        {
+            var supervisorUser = await dbContext.Users.FirstOrDefaultAsync(u => u.Email == supervisorEmail);
+
+            if (supervisorUser is null)
+            {
+                dbContext.Users.Add(new User
+                {
+                    Name = string.IsNullOrWhiteSpace(supervisorName) ? "Default Supervisor" : supervisorName,
+                    Email = supervisorEmail,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(supervisorPassword),
+                    Role = UserRole.Admin,
+                    CreatedAt = DateTime.UtcNow,
+                    IsActive = true
+                });
+
+                await dbContext.SaveChangesAsync();
+                startupLogger.LogInformation("Supervisor user seeded successfully for {SupervisorEmail}.", supervisorEmail);
+            }
+            else
+            {
+                var updated = false;
+
+                if (supervisorUser.Role != UserRole.Admin)
+                {
+                    supervisorUser.Role = UserRole.Admin;
+                    updated = true;
+                }
+
+                if (!supervisorUser.IsActive)
+                {
+                    supervisorUser.IsActive = true;
+                    updated = true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(supervisorName) && supervisorUser.Name != supervisorName)
+                {
+                    supervisorUser.Name = supervisorName;
+                    updated = true;
+                }
+
+                if (updated)
+                {
+                    supervisorUser.UpdatedAt = DateTime.UtcNow;
+                    await dbContext.SaveChangesAsync();
+                    startupLogger.LogInformation("Supervisor user updated for {SupervisorEmail}.", supervisorEmail);
+                }
+            }
+        }
+    }
+    catch (Exception ex)
+    {
+        startupLogger.LogError(ex, "Supervisor seeding failed during startup.");
     }
 }
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, Navigate, useNavigate } from 'react-router-dom';
 import { AppBar, Toolbar, Typography, Container, Button } from '@mui/material';
 import { useAuth } from './hooks/useAuth';
 import RequireAuth from './components/RequireAuth';
@@ -7,43 +7,42 @@ import RequireRole from './components/RequireRole';
 import ProductList from './pages/ProductList';
 import AddProduct from './pages/AddProduct';
 import EditProduct from './pages/EditProduct';
-import Home from './pages/Home';
 import Landing from './pages/Landing';
 import Register from './pages/Register';
-import AdminRegister from './pages/AdminRegister';
 import Login from './pages/Login';
 import Profile from './pages/Profile';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
 import Orders from './pages/Orders';
 import OrderDetails from './pages/OrderDetails';
-import { isAdminOrInventoryRole } from './utils/role';
+import StaffManagement from './pages/StaffManagement';
+import AdminReports from './pages/AdminReports';
+import AdminOrderOperations from './pages/AdminOrderOperations';
+import InventoryLayout from './pages/InventoryLayout';
+import InventoryDashboard from './pages/InventoryDashboard';
+import SuppliersPage from './pages/SuppliersPage';
+import StockPurchasesPage from './pages/StockPurchasesPage';
+import InventoryLowStockPage from './pages/InventoryLowStockPage';
+import { isAdminOrInventoryRole, normalizeRole } from './utils/role';
 
 function AppShell() {
-  const location = useLocation();
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
   const isAdminOrInventory = isAdminOrInventoryRole(user?.role);
-  const hideNav = location.pathname === '/start';
+  const isAdmin = normalizeRole(user?.role) === 'Admin';
+  const inventoryHomeRoute = isAdmin ? '/admin/products' : '/inventory/dashboard';
 
   return (
     <>
-      {!hideNav ? (
-        <AppBar position="static">
-          <Toolbar>
-            <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-              Supermarket Management
-            </Typography>
+      <AppBar position="static">
+        <Toolbar>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+            Supermarket Management
+          </Typography>
 
             <Button color="inherit" component={Link} to="/">
               Home
             </Button>
-
-            {!isAuthenticated ? (
-              <Button color="inherit" component={Link} to="/start">
-                Get Started
-              </Button>
-            ) : null}
 
             {!isAuthenticated || !isAdminOrInventory ? (
               <Button color="inherit" component={Link} to="/shop">
@@ -53,11 +52,24 @@ function AppShell() {
 
             {isAuthenticated && isAdminOrInventory ? (
               <>
-                <Button color="inherit" component={Link} to="/admin/products">
+                <Button color="inherit" component={Link} to={inventoryHomeRoute}>
                   Inventory
                 </Button>
                 <Button color="inherit" component={Link} to="/add-product">
                   Add Product
+                </Button>
+                {isAdmin ? (
+                  <Button color="inherit" component={Link} to="/admin/staff">
+                    Staff
+                  </Button>
+                ) : null}
+                {isAdmin ? (
+                  <Button color="inherit" component={Link} to="/admin/reports">
+                    Reports
+                  </Button>
+                ) : null}
+                <Button color="inherit" component={Link} to="/admin/orders">
+                  Order Ops
                 </Button>
               </>
             ) : null}
@@ -82,7 +94,7 @@ function AppShell() {
                   color="inherit"
                   onClick={() => {
                     logout();
-                    navigate('/start', { replace: true });
+                    navigate('/', { replace: true });
                   }}
                 >
                   Logout
@@ -98,24 +110,65 @@ function AppShell() {
                 </Button>
               </>
             )}
-          </Toolbar>
-        </AppBar>
-      ) : null}
+        </Toolbar>
+      </AppBar>
 
       <Container maxWidth="lg" sx={{ mt: 4 }}>
         <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/start" element={<Landing />} />
+          <Route path="/" element={<Landing />} />
           <Route path="/shop" element={<ProductList />} />
 
-          <Route path="/admin/login" element={<Login />} />
-          <Route path="/admin/register" element={<AdminRegister />} />
+          <Route path="/admin/login" element={<Navigate to="/login" replace />} />
+          <Route path="/admin/register" element={<Navigate to="/register" replace />} />
 
           <Route
             path="/admin/products"
             element={
               <RequireRole roles={['Admin', 'InventoryManager']}>
                 <ProductList />
+              </RequireRole>
+            }
+          />
+
+          <Route
+            path="/inventory"
+            element={
+              <RequireRole roles={['Admin', 'InventoryManager']}>
+                <InventoryLayout />
+              </RequireRole>
+            }
+          >
+            <Route index element={<Navigate to="dashboard" replace />} />
+            <Route path="dashboard" element={<InventoryDashboard />} />
+            <Route path="products" element={<ProductList />} />
+            <Route path="suppliers" element={<SuppliersPage />} />
+            <Route path="purchases" element={<StockPurchasesPage />} />
+            <Route path="low-stock" element={<InventoryLowStockPage />} />
+          </Route>
+
+          <Route
+            path="/admin/staff"
+            element={
+              <RequireRole roles={['Admin']}>
+                <StaffManagement />
+              </RequireRole>
+            }
+          />
+
+          <Route
+            path="/admin/reports"
+            element={
+              <RequireRole roles={['Admin']}>
+                <AdminReports />
+              </RequireRole>
+            }
+          />
+
+          <Route
+            path="/admin/orders"
+            element={
+              <RequireRole roles={['Admin', 'InventoryManager']}>
+                <AdminOrderOperations />
               </RequireRole>
             }
           />

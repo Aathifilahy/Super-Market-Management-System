@@ -23,6 +23,9 @@ public class Product
     [Range(0, int.MaxValue)]
     public int Quantity { get; set; }
 
+    [Range(1, int.MaxValue)]
+    public int? LowStockThreshold { get; set; }
+
     [Required]
     public DateTime ExpiryDate { get; set; }
 
@@ -34,7 +37,7 @@ public class Product
     public DateTime? UpdatedAt { get; set; }
 
     [NotMapped]
-    public bool IsLowStock => Quantity < 10;
+    public bool IsLowStock => Quantity < (LowStockThreshold.HasValue && LowStockThreshold.Value > 0 ? LowStockThreshold.Value : 10);
 
     [NotMapped]
     public bool IsExpired => ExpiryDate < DateTime.UtcNow;

@@ -54,8 +54,8 @@ class LoginPage {
     ]);
   }
 
-  async navigate(baseUrl, isAdmin = false) {
-    await this.driver.get(`${baseUrl}${isAdmin ? '/admin/login' : '/login'}`);
+  async navigate(baseUrl) {
+    await this.driver.get(`${baseUrl}/login`);
   }
 
   async login(email, password, rememberMe = true) {

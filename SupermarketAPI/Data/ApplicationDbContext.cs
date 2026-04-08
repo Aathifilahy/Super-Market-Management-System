@@ -13,6 +13,8 @@ public class ApplicationDbContext : DbContext
 
     public DbSet<Product> Products => Set<Product>();
     public DbSet<User> Users => Set<User>();
+    public DbSet<Supplier> Suppliers => Set<Supplier>();
+    public DbSet<StockPurchase> StockPurchases => Set<StockPurchase>();
     public DbSet<Cart> Carts => Set<Cart>();
     public DbSet<CartItem> CartItems => Set<CartItem>();
     public DbSet<Order> Orders => Set<Order>();
@@ -41,6 +43,9 @@ public class ApplicationDbContext : DbContext
             entity.Property(p => p.Quantity)
                 .IsRequired();
 
+            entity.Property(p => p.LowStockThreshold)
+                .IsRequired(false);
+
             entity.Property(p => p.ExpiryDate)
                 .IsRequired();
 
@@ -53,6 +58,78 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(p => p.Name);
             entity.HasIndex(p => p.Category);
             entity.HasIndex(p => p.ExpiryDate);
+            entity.HasIndex(p => p.Quantity);
+        });
+
+        modelBuilder.Entity<Supplier>(entity =>
+        {
+            entity.ToTable("Suppliers");
+
+            entity.HasKey(s => s.Id);
+
+            entity.Property(s => s.CompanyName)
+                .IsRequired()
+                .HasMaxLength(150);
+
+            entity.Property(s => s.ContactPerson)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(s => s.Email)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(s => s.Phone)
+                .IsRequired()
+                .HasMaxLength(20);
+
+            entity.Property(s => s.Address)
+                .IsRequired()
+                .HasMaxLength(500);
+
+            entity.Property(s => s.TaxIdOrVatNumber)
+                .HasMaxLength(50);
+
+            entity.Property(s => s.CreatedAt)
+                .IsRequired();
+
+            entity.HasIndex(s => s.CompanyName);
+            entity.HasIndex(s => s.Email);
+            entity.HasIndex(s => s.IsActive);
+        });
+
+        modelBuilder.Entity<StockPurchase>(entity =>
+        {
+            entity.ToTable("StockPurchases");
+
+            entity.HasKey(sp => sp.Id);
+
+            entity.Property(sp => sp.Quantity)
+                .IsRequired();
+
+            entity.Property(sp => sp.PurchasePrice)
+                .HasPrecision(18, 2)
+                .IsRequired();
+
+            entity.Property(sp => sp.PurchaseDate)
+                .IsRequired();
+
+            entity.Property(sp => sp.CreatedAt)
+                .IsRequired();
+
+            entity.HasIndex(sp => sp.SupplierId);
+            entity.HasIndex(sp => sp.ProductId);
+            entity.HasIndex(sp => sp.PurchaseDate);
+
+            entity.HasOne(sp => sp.Supplier)
+                .WithMany(s => s.StockPurchases)
+                .HasForeignKey(sp => sp.SupplierId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(sp => sp.Product)
+                .WithMany()
+                .HasForeignKey(sp => sp.ProductId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<User>(entity =>
