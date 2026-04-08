@@ -7,6 +7,16 @@ export interface CartApiError {
   status?: number;
 }
 
+class CartApiException extends Error {
+  status?: number;
+
+  constructor(message: string, status?: number) {
+    super(message);
+    this.name = 'CartApiException';
+    this.status = status;
+  }
+}
+
 function getErrorMessage(error: unknown): CartApiError {
   if (axios.isAxiosError(error)) {
     const status = error.response?.status;
@@ -26,6 +36,10 @@ function getErrorMessage(error: unknown): CartApiError {
     if (error.message) {
       return { message: error.message, status };
     }
+  }
+
+  if (error instanceof CartApiException) {
+    return { message: error.message, status: error.status };
   }
 
   if (error instanceof Error && error.message.trim().length > 0) {
@@ -66,7 +80,7 @@ export const cartApi = {
       const existingItem = currentCart.items.find((item) => item.id === itemId);
 
       if (!existingItem) {
-        throw { message: 'Cart item not found.', status: 404 } as CartApiError;
+        throw new CartApiException('Cart item not found.', 404);
       }
 
       const payload: UpdateCartItemRequest = {
