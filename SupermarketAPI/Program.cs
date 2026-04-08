@@ -13,11 +13,19 @@ using SupermarketAPI.Models.DTOs;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var frontendOrigins = builder.Configuration["FRONTEND_URLS"]?
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+if (frontendOrigins is null || frontendOrigins.Length == 0)
+{
+    frontendOrigins = new[] { "http://localhost:3000", "http://localhost:3001" };
+}
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("FrontendPolicy", policy =>
     {
-        policy.WithOrigins("http://localhost:3000", "http://localhost:3001")
+        policy.WithOrigins(frontendOrigins)
             .AllowAnyHeader()
             .AllowAnyMethod();
     });

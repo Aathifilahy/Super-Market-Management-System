@@ -77,11 +77,11 @@ function Register() {
   });
 
   const password = watch('password', '');
-  const nameValue = watch('name', '');
-  const emailValue = watch('email', '');
-  const confirmPasswordValue = watch('confirmPassword', '');
-  const addressValue = watch('address', '');
-  const phoneValue = watch('phone', '');
+  const watchedName = watch('name', '');
+  const watchedEmail = watch('email', '');
+  const watchedConfirmPassword = watch('confirmPassword', '');
+  const watchedAddress = watch('address', '');
+  const watchedPhone = watch('phone', '');
   const passwordStrength = useMemo(() => getPasswordStrength(password), [password]);
 
   useEffect(() => {
@@ -89,12 +89,12 @@ function Register() {
       clearError();
     }
   }, [
-    nameValue,
-    emailValue,
+    watchedName,
+    watchedEmail,
     password,
-    confirmPasswordValue,
-    addressValue,
-    phoneValue,
+    watchedConfirmPassword,
+    watchedAddress,
+    watchedPhone,
     error,
     clearError,
   ]);
