@@ -23,12 +23,15 @@ import InventoryDashboard from './pages/InventoryDashboard';
 import SuppliersPage from './pages/SuppliersPage';
 import StockPurchasesPage from './pages/StockPurchasesPage';
 import InventoryLowStockPage from './pages/InventoryLowStockPage';
-import { isAdminOrInventoryRole, normalizeRole } from './utils/role';
+import CashierLayout from './pages/CashierLayout';
+import CashierDashboard from './pages/CashierDashboard';
+import { isAdminOrInventoryRole, isCashierRole, normalizeRole } from './utils/role';
 
 function AppShell() {
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
   const isAdminOrInventory = isAdminOrInventoryRole(user?.role);
+  const isCashier = isCashierRole(user?.role);
   const isAdmin = normalizeRole(user?.role) === 'Admin';
   const inventoryHomeRoute = isAdmin ? '/admin/products' : '/inventory/dashboard';
 
@@ -47,6 +50,12 @@ function AppShell() {
             {!isAuthenticated || !isAdminOrInventory ? (
               <Button color="inherit" component={Link} to="/shop">
                 Shop
+              </Button>
+            ) : null}
+
+            {isAuthenticated && isCashier ? (
+              <Button color="inherit" component={Link} to="/cashier/pos">
+                POS
               </Button>
             ) : null}
 
@@ -74,7 +83,7 @@ function AppShell() {
               </>
             ) : null}
 
-            {isAuthenticated && !isAdminOrInventory ? (
+            {isAuthenticated && !isAdminOrInventory && !isCashier ? (
               <>
                 <Button color="inherit" component={Link} to="/cart">
                   Cart
@@ -144,6 +153,18 @@ function AppShell() {
             <Route path="suppliers" element={<SuppliersPage />} />
             <Route path="purchases" element={<StockPurchasesPage />} />
             <Route path="low-stock" element={<InventoryLowStockPage />} />
+          </Route>
+
+          <Route
+            path="/cashier"
+            element={
+              <RequireRole roles={['Cashier']}>
+                <CashierLayout />
+              </RequireRole>
+            }
+          >
+            <Route index element={<Navigate to="pos" replace />} />
+            <Route path="pos" element={<CashierDashboard />} />
           </Route>
 
           <Route
