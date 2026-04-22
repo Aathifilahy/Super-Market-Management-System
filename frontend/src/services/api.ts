@@ -2,10 +2,18 @@ import axios from 'axios';
 import { Product, CreateProductDto, UpdateProductDto } from '../types/Product';
 
 const configuredApiBaseUrl = process.env.REACT_APP_API_BASE_URL?.trim();
-const API_BASE_URL = configuredApiBaseUrl || (process.env.NODE_ENV === 'development' ? 'http://localhost:5224/api' : '/api');
+const DEFAULT_DEV_API_BASE_URL = 'http://localhost:5224/api';
+const DEFAULT_PROD_API_BASE_URL = 'https://smmsbackend.azurewebsites.net/api';
+const API_BASE_URL =
+  configuredApiBaseUrl ||
+  (process.env.NODE_ENV === 'development'
+    ? DEFAULT_DEV_API_BASE_URL
+    : DEFAULT_PROD_API_BASE_URL);
 
 if (!configuredApiBaseUrl && process.env.NODE_ENV === 'production') {
-  console.warn('REACT_APP_API_BASE_URL is not set. Falling back to relative /api.');
+  console.warn(
+    `REACT_APP_API_BASE_URL is not set. Falling back to ${DEFAULT_PROD_API_BASE_URL}.`
+  );
 }
 
 const api = axios.create({
