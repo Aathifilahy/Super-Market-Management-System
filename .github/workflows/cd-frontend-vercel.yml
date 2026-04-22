@@ -57,7 +57,6 @@ jobs:
         run: vercel whoami --token="${VERCEL_TOKEN}"
 
       - name: Pull Vercel Environment Information (Production)
-        working-directory: frontend
         run: vercel pull --yes --environment=production --token="${VERCEL_TOKEN}"
 
       - name: Verify Frontend Build Locally
@@ -65,5 +64,4 @@ jobs:
         run: npm run build
 
       - name: Deploy to Vercel (Production Cloud Build)
-        working-directory: frontend
         run: vercel deploy --prod --yes --token="${VERCEL_TOKEN}"
