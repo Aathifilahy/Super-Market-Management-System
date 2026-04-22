@@ -44,3 +44,7 @@ export function isAdminOrInventoryRole(role: unknown): boolean {
 export function isCustomerRole(role: unknown): boolean {
   return normalizeRole(role) === 'Customer';
 }
+
+export function isCashierRole(role: unknown): boolean {
+  return normalizeRole(role) === 'Cashier';
+}

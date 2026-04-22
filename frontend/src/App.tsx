@@ -23,12 +23,42 @@ import InventoryDashboard from './pages/InventoryDashboard';
 import SuppliersPage from './pages/SuppliersPage';
 import StockPurchasesPage from './pages/StockPurchasesPage';
 import InventoryLowStockPage from './pages/InventoryLowStockPage';
-import { isAdminOrInventoryRole, normalizeRole } from './utils/role';
+import CashierLayout from './pages/CashierLayout';
+import CashierDashboard from './pages/CashierDashboard';
+import { isAdminOrInventoryRole, isCashierRole, normalizeRole } from './utils/role';
+
+function StaffAwareShopRoute() {
+  const { user, isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return null;
+  }
+
+  if (!isAuthenticated || !user) {
+    return <ProductList />;
+  }
+
+  const role = normalizeRole(user.role);
+  if (role === 'Cashier') {
+    return <Navigate to="/cashier/pos" replace />;
+  }
+
+  if (role === 'Admin') {
+    return <Navigate to="/admin/products" replace />;
+  }
+
+  if (role === 'InventoryManager') {
+    return <Navigate to="/inventory/dashboard" replace />;
+  }
+
+  return <ProductList />;
+}
 
 function AppShell() {
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
   const isAdminOrInventory = isAdminOrInventoryRole(user?.role);
+  const isCashier = isCashierRole(user?.role);
   const isAdmin = normalizeRole(user?.role) === 'Admin';
   const inventoryHomeRoute = isAdmin ? '/admin/products' : '/inventory/dashboard';
 
@@ -44,9 +74,15 @@ function AppShell() {
               Home
             </Button>
 
-            {!isAuthenticated || !isAdminOrInventory ? (
+            {!isAuthenticated || (!isAdminOrInventory && !isCashier) ? (
               <Button color="inherit" component={Link} to="/shop">
                 Shop
+              </Button>
+            ) : null}
+
+            {isAuthenticated && isCashier ? (
+              <Button color="inherit" component={Link} to="/cashier/pos">
+                POS
               </Button>
             ) : null}
 
@@ -74,7 +110,7 @@ function AppShell() {
               </>
             ) : null}
 
-            {isAuthenticated && !isAdminOrInventory ? (
+            {isAuthenticated && !isAdminOrInventory && !isCashier ? (
               <>
                 <Button color="inherit" component={Link} to="/cart">
                   Cart
@@ -116,7 +152,7 @@ function AppShell() {
       <Container maxWidth="lg" sx={{ mt: 4 }}>
         <Routes>
           <Route path="/" element={<Landing />} />
-          <Route path="/shop" element={<ProductList />} />
+          <Route path="/shop" element={<StaffAwareShopRoute />} />
 
           <Route path="/admin/login" element={<Navigate to="/login" replace />} />
           <Route path="/admin/register" element={<Navigate to="/register" replace />} />
@@ -144,6 +180,18 @@ function AppShell() {
             <Route path="suppliers" element={<SuppliersPage />} />
             <Route path="purchases" element={<StockPurchasesPage />} />
             <Route path="low-stock" element={<InventoryLowStockPage />} />
+          </Route>
+
+          <Route
+            path="/cashier"
+            element={
+              <RequireRole roles={['Cashier']}>
+                <CashierLayout />
+              </RequireRole>
+            }
+          >
+            <Route index element={<Navigate to="pos" replace />} />
+            <Route path="pos" element={<CashierDashboard />} />
           </Route>
 
           <Route
@@ -204,33 +252,33 @@ function AppShell() {
           <Route
             path="/cart"
             element={
-              <RequireAuth>
+              <RequireRole roles={['Customer']}>
                 <Cart />
-              </RequireAuth>
+              </RequireRole>
             }
           />
           <Route
             path="/checkout"
             element={
-              <RequireAuth>
+              <RequireRole roles={['Customer']}>
                 <Checkout />
-              </RequireAuth>
+              </RequireRole>
             }
           />
           <Route
             path="/orders"
             element={
-              <RequireAuth>
+              <RequireRole roles={['Customer']}>
                 <Orders />
-              </RequireAuth>
+              </RequireRole>
             }
           />
           <Route
             path="/orders/:id"
             element={
-              <RequireAuth>
+              <RequireRole roles={['Customer']}>
                 <OrderDetails />
-              </RequireAuth>
+              </RequireRole>
             }
           />
         </Routes>

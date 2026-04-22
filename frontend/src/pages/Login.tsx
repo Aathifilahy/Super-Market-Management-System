@@ -49,7 +49,7 @@ function Login() {
     }
 
     if (role === 'Cashier') {
-      navigate('/shop', { replace: true });
+      navigate('/cashier/pos', { replace: true });
       return;
     }
 
