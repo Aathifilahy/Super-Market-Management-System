@@ -60,10 +60,10 @@ jobs:
         working-directory: frontend
         run: vercel pull --yes --environment=production --token="${VERCEL_TOKEN}"
 
-      - name: Build Project Artifacts (Production)
+      - name: Verify Frontend Build Locally
         working-directory: frontend
-        run: vercel build --prod --token="${VERCEL_TOKEN}"
+        run: npm run build
 
-      - name: Deploy to Vercel (Production)
+      - name: Deploy to Vercel (Production Cloud Build)
         working-directory: frontend
-        run: vercel deploy --prebuilt --prod --token="${VERCEL_TOKEN}"
+        run: vercel deploy --prod --yes --token="${VERCEL_TOKEN}"
