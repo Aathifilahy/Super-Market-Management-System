@@ -1,6 +1,7 @@
 import React from 'react';
+import { alpha, useTheme } from '@mui/material/styles';
 import { BrowserRouter as Router, Routes, Route, Link, Navigate, useNavigate } from 'react-router-dom';
-import { AppBar, Toolbar, Typography, Container, Button } from '@mui/material';
+import { AppBar, Toolbar, Typography, Container, Button, Box } from '@mui/material';
 import { useAuth } from './hooks/useAuth';
 import RequireAuth from './components/RequireAuth';
 import RequireRole from './components/RequireRole';
@@ -56,55 +57,98 @@ function StaffAwareShopRoute() {
 
 function AppShell() {
   const navigate = useNavigate();
+  const theme = useTheme();
   const { user, isAuthenticated, logout } = useAuth();
   const isAdminOrInventory = isAdminOrInventoryRole(user?.role);
   const isCashier = isCashierRole(user?.role);
   const isAdmin = normalizeRole(user?.role) === 'Admin';
   const inventoryHomeRoute = isAdmin ? '/admin/products' : '/inventory/dashboard';
+  const navButtonSx = {
+    borderRadius: 999,
+    px: { xs: 1.25, md: 1.8 },
+    py: 0.9,
+    minWidth: 'auto',
+    textTransform: 'none',
+    fontWeight: 700,
+    letterSpacing: 0.2,
+    color: alpha(theme.palette.common.white, 0.92),
+    '&:hover': {
+      bgcolor: alpha(theme.palette.common.white, 0.12),
+    },
+  };
 
   return (
     <>
-      <AppBar position="static">
-        <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+      <AppBar
+        position="static"
+        elevation={0}
+        sx={{
+          background: `linear-gradient(120deg, ${theme.palette.primary.main} 0%, ${alpha(
+            theme.palette.primary.dark,
+            0.96,
+          )} 45%, ${theme.palette.secondary.main} 100%)`,
+          borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.14)}`,
+          boxShadow: '0 18px 40px rgba(25, 118, 210, 0.18)',
+          backdropFilter: 'blur(10px)',
+        }}
+      >
+        <Toolbar
+          sx={{
+            minHeight: { xs: 72, md: 78 },
+            px: { xs: 1, sm: 2 },
+            gap: 1.5,
+            flexWrap: 'wrap',
+          }}
+        >
+          <Typography
+            variant="h6"
+            component="div"
+            sx={{
+              flexGrow: 1,
+              fontWeight: 700,
+              letterSpacing: -0.3,
+              color: theme.palette.common.white,
+            }}
+          >
             Supermarket Management
           </Typography>
 
-            <Button color="inherit" component={Link} to="/">
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 0.5 }}>
+            <Button color="inherit" component={Link} to="/" sx={navButtonSx}>
               Home
             </Button>
 
             {!isAuthenticated || (!isAdminOrInventory && !isCashier) ? (
-              <Button color="inherit" component={Link} to="/shop">
+              <Button color="inherit" component={Link} to="/shop" sx={navButtonSx}>
                 Shop
               </Button>
             ) : null}
 
             {isAuthenticated && isCashier ? (
-              <Button color="inherit" component={Link} to="/cashier/pos">
+              <Button color="inherit" component={Link} to="/cashier/pos" sx={navButtonSx}>
                 POS
               </Button>
             ) : null}
 
             {isAuthenticated && isAdminOrInventory ? (
               <>
-                <Button color="inherit" component={Link} to={inventoryHomeRoute}>
+                <Button color="inherit" component={Link} to={inventoryHomeRoute} sx={navButtonSx}>
                   Inventory
                 </Button>
-                <Button color="inherit" component={Link} to="/add-product">
+                <Button color="inherit" component={Link} to="/add-product" sx={navButtonSx}>
                   Add Product
                 </Button>
                 {isAdmin ? (
-                  <Button color="inherit" component={Link} to="/admin/staff">
+                  <Button color="inherit" component={Link} to="/admin/staff" sx={navButtonSx}>
                     Staff
                   </Button>
                 ) : null}
                 {isAdmin ? (
-                  <Button color="inherit" component={Link} to="/admin/reports">
+                  <Button color="inherit" component={Link} to="/admin/reports" sx={navButtonSx}>
                     Reports
                   </Button>
                 ) : null}
-                <Button color="inherit" component={Link} to="/admin/orders">
+                <Button color="inherit" component={Link} to="/admin/orders" sx={navButtonSx}>
                   Order Ops
                 </Button>
               </>
@@ -112,10 +156,10 @@ function AppShell() {
 
             {isAuthenticated && !isAdminOrInventory && !isCashier ? (
               <>
-                <Button color="inherit" component={Link} to="/cart">
+                <Button color="inherit" component={Link} to="/cart" sx={navButtonSx}>
                   Cart
                 </Button>
-                <Button color="inherit" component={Link} to="/orders">
+                <Button color="inherit" component={Link} to="/orders" sx={navButtonSx}>
                   Orders
                 </Button>
               </>
@@ -123,11 +167,12 @@ function AppShell() {
 
             {isAuthenticated ? (
               <>
-                <Button color="inherit" component={Link} to="/profile">
+                <Button color="inherit" component={Link} to="/profile" sx={navButtonSx}>
                   Profile
                 </Button>
                 <Button
                   color="inherit"
+                  sx={navButtonSx}
                   onClick={() => {
                     logout();
                     navigate('/', { replace: true });
@@ -138,14 +183,15 @@ function AppShell() {
               </>
             ) : (
               <>
-                <Button color="inherit" component={Link} to="/register">
+                <Button color="inherit" component={Link} to="/register" sx={navButtonSx}>
                   Register
                 </Button>
-                <Button color="inherit" component={Link} to="/login">
+                <Button color="inherit" component={Link} to="/login" sx={navButtonSx}>
                   Login
                 </Button>
               </>
             )}
+          </Box>
         </Toolbar>
       </AppBar>
 
