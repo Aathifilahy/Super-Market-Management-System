@@ -7,6 +7,7 @@ public class ProductResponseDto
     public string Category { get; set; } = string.Empty;
     public decimal Price { get; set; }
     public int Quantity { get; set; }
+    public int? LowStockThreshold { get; set; }
     public DateTime ExpiryDate { get; set; }
     public string? ImageUrl { get; set; }
     public DateTime CreatedAt { get; set; }

@@ -3,20 +3,30 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using MySqlConnector;
 using SupermarketAPI.Data;
 using SupermarketAPI.Interfaces;
 using SupermarketAPI.Repositories;
 using SupermarketAPI.Services;
 using SupermarketAPI.Settings;
+using SupermarketAPI.Models.DTOs;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var frontendOrigins = builder.Configuration["FRONTEND_URLS"]?
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+if (frontendOrigins is null || frontendOrigins.Length == 0)
+{
+    frontendOrigins = new[] { "http://localhost:3000", "http://localhost:3001" };
+}
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("FrontendPolicy", policy =>
     {
-        policy.WithOrigins("http://localhost:3000")
+        policy.WithOrigins(frontendOrigins)
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
@@ -39,6 +49,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<ICartService, CartService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
+builder.Services.AddScoped<IPosService, PosService>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddAutoMapper(typeof(Program));
 
@@ -80,7 +91,43 @@ builder.Services.AddControllers()
     });
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Supermarket Management API",
+        Version = "v1",
+        Description = "Sprint 4 demo-ready API for customer shopping, staff management, inventory, cashier POS, and admin reporting."
+    });
+
+    var jwtSecurityScheme = new OpenApiSecurityScheme
+    {
+        BearerFormat = "JWT",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        Description = "Paste a JWT access token here. Example: Bearer {token}",
+        Reference = new OpenApiReference
+        {
+            Id = JwtBearerDefaults.AuthenticationScheme,
+            Type = ReferenceType.SecurityScheme
+        }
+    };
+
+    options.AddSecurityDefinition(jwtSecurityScheme.Reference.Id, jwtSecurityScheme);
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        [jwtSecurityScheme] = Array.Empty<string>()
+    });
+
+    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+    {
+        options.IncludeXmlComments(xmlPath);
+    }
+});
 
 var app = builder.Build();
 
@@ -89,6 +136,7 @@ if (app.Environment.IsDevelopment())
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     var startupLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    var autoMigrateOnStartup = builder.Configuration.GetValue<bool>("AutoMigrateOnStartup");
 
     try
     {
@@ -97,8 +145,15 @@ if (app.Environment.IsDevelopment())
             startupLogger.LogError("Database connection check failed. Verify MySQL host, port, user, password, and authentication plugin settings.");
         }
 
-        dbContext.Database.Migrate();
-        startupLogger.LogInformation("Database migrations applied successfully.");
+        if (autoMigrateOnStartup)
+        {
+            dbContext.Database.Migrate();
+            startupLogger.LogInformation("Database migrations applied successfully.");
+        }
+        else
+        {
+            startupLogger.LogInformation("Skipping automatic migrations in Development. Set AutoMigrateOnStartup=true to enable.");
+        }
     }
     catch (MySqlException ex)
     {
@@ -111,7 +166,12 @@ if (app.Environment.IsDevelopment())
     }
 
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(options =>
+    {
+        options.DocumentTitle = "Supermarket Management API Docs";
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "Supermarket Management API v1");
+        options.DefaultModelsExpandDepth(-1);
+    });
 }
 
 if (app.Environment.IsProduction())
@@ -130,6 +190,77 @@ if (app.Environment.IsProduction())
     {
         startupLogger.LogError(ex, "An error occurred while applying EF Core migrations on startup.");
         throw;
+    }
+}
+
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    var startupLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    try
+    {
+        var supervisorEmail = builder.Configuration["Supervisor:Email"]?.Trim().ToLowerInvariant();
+        var supervisorPassword = builder.Configuration["Supervisor:Password"];
+        var supervisorName = builder.Configuration["Supervisor:Name"]?.Trim();
+
+        if (string.IsNullOrWhiteSpace(supervisorEmail) || string.IsNullOrWhiteSpace(supervisorPassword))
+        {
+            startupLogger.LogInformation("Skipping supervisor seeding because Supervisor:Email or Supervisor:Password is missing.");
+        }
+        else
+        {
+            var supervisorUser = await dbContext.Users.FirstOrDefaultAsync(u => u.Email == supervisorEmail);
+
+            if (supervisorUser is null)
+            {
+                dbContext.Users.Add(new User
+                {
+                    Name = string.IsNullOrWhiteSpace(supervisorName) ? "Default Supervisor" : supervisorName,
+                    Email = supervisorEmail,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(supervisorPassword),
+                    Role = UserRole.Admin,
+                    CreatedAt = DateTime.UtcNow,
+                    IsActive = true
+                });
+
+                await dbContext.SaveChangesAsync();
+                startupLogger.LogInformation("Supervisor user seeded successfully for {SupervisorEmail}.", supervisorEmail);
+            }
+            else
+            {
+                var updated = false;
+
+                if (supervisorUser.Role != UserRole.Admin)
+                {
+                    supervisorUser.Role = UserRole.Admin;
+                    updated = true;
+                }
+
+                if (!supervisorUser.IsActive)
+                {
+                    supervisorUser.IsActive = true;
+                    updated = true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(supervisorName) && supervisorUser.Name != supervisorName)
+                {
+                    supervisorUser.Name = supervisorName;
+                    updated = true;
+                }
+
+                if (updated)
+                {
+                    supervisorUser.UpdatedAt = DateTime.UtcNow;
+                    await dbContext.SaveChangesAsync();
+                    startupLogger.LogInformation("Supervisor user updated for {SupervisorEmail}.", supervisorEmail);
+                }
+            }
+        }
+    }
+    catch (Exception ex)
+    {
+        startupLogger.LogError(ex, "Supervisor seeding failed during startup.");
     }
 }
 

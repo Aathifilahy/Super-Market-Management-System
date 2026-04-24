@@ -1,0 +1,57 @@
+diff --git a/node_modules/react-scripts/config/webpack.config.js b/node_modules/react-scripts/config/webpack.config.js
+index e465d8e..729b5a9 100644
+--- a/node_modules/react-scripts/config/webpack.config.js
++++ b/node_modules/react-scripts/config/webpack.config.js
+@@ -210,7 +210,12 @@ module.exports = function (webpackEnv) {
+       : isEnvDevelopment && 'cheap-module-source-map',
+     // These are the "entry points" to our application.
+     // This means they will be the "root" imports that are included in JS bundle.
+-    entry: paths.appIndexJs,
++    entry: isEnvDevelopment
++      ? [
++          require.resolve('react-dev-utils/webpackHotDevClient'),
++          paths.appIndexJs,
++        ]
++      : paths.appIndexJs,
+     output: {
+       // The build folder.
+       path: paths.appBuild,
+@@ -717,6 +722,7 @@ module.exports = function (webpackEnv) {
+         }),
+       // TypeScript type checking
+       useTypeScript &&
++        isEnvProduction &&
+         new ForkTsCheckerWebpackPlugin({
+           async: isEnvDevelopment,
+           typescript: {
+@@ -764,6 +770,7 @@ module.exports = function (webpackEnv) {
+           },
+         }),
+       !disableESLintPlugin &&
++        isEnvProduction &&
+         new ESLintPlugin({
+           // Plugin options
+           extensions: ['js', 'mjs', 'jsx', 'ts', 'tsx'],
+diff --git a/node_modules/react-scripts/config/webpackDevServer.config.js b/node_modules/react-scripts/config/webpackDevServer.config.js
+index 522a81b..c683942 100644
+--- a/node_modules/react-scripts/config/webpackDevServer.config.js
++++ b/node_modules/react-scripts/config/webpackDevServer.config.js
+@@ -25,6 +25,9 @@ module.exports = function (proxy, allowedHost) {
+   const disableFirewall =
+     !proxy || process.env.DANGEROUSLY_DISABLE_HOST_CHECK === 'true';
+   return {
++    // Explicitly enable Hot Module Replacement (HMR).
++    // Newer webpack-dev-server versions default `hot` to false unless set.
++    hot: true,
+     // WebpackDevServer 2.4.3 introduced a security fix that prevents remote
+     // websites from potentially accessing local content through DNS rebinding:
+     // https://github.com/webpack/webpack-dev-server/issues/887
+@@ -67,7 +70,7 @@ module.exports = function (proxy, allowedHost) {
+       // for some reason broken when imported through webpack. If you just want to
+       // use an image, put it in `src` and `import` it from JavaScript instead.
+       directory: paths.appPublic,
+-      publicPath: [paths.publicUrlOrPath],
++      publicPath: paths.publicUrlOrPath,
+       // By default files from `contentBase` will not trigger a page reload.
+       watch: {
+         // Reportedly, this avoids CPU overload on some systems.

@@ -20,6 +20,9 @@ public class CreateProductDto
     [Range(0, int.MaxValue)]
     public int Quantity { get; set; }
 
+    [Range(1, int.MaxValue)]
+    public int? LowStockThreshold { get; set; }
+
     [Required]
     public DateTime ExpiryDate { get; set; }
 
