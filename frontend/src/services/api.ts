@@ -15,7 +15,6 @@ if (!configuredApiBaseUrl && process.env.NODE_ENV === 'production') {
     `REACT_APP_API_BASE_URL is not set. Falling back to ${DEFAULT_PROD_API_BASE_URL}.`
   );
 }
->>>>>>> origin/main
 
 const api = axios.create({
   baseURL: API_BASE_URL,
