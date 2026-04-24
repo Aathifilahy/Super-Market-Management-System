@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { Product, CreateProductDto, UpdateProductDto } from '../types/Product';
 
-const API_BASE_URL = 'http://localhost:5224/api';
+const API_BASE_URL = 'https://smmsbackend-bgdxbqh7eqd6hgc6.eastasia-01.azurewebsites.net';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
