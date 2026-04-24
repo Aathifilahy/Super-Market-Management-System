@@ -2,8 +2,8 @@ import axios from 'axios';
 import { Product, CreateProductDto, UpdateProductDto } from '../types/Product';
 
 const configuredApiBaseUrl = process.env.REACT_APP_API_BASE_URL?.trim();
-const DEFAULT_DEV_API_BASE_URL = 'http://localhost:5224/api';
-const DEFAULT_PROD_API_BASE_URL = 'https://supermarket-api-uksuper-c2cyhjepeyfgfvar.azurewebsites.net/api';
+const DEFAULT_DEV_API_BASE_URL = 'https://smmsbackend-bgdxbqh7eqd6hgc6.eastasia-01.azurewebsites.net/';
+const DEFAULT_PROD_API_BASE_URL = 'https://smmsbackend-bgdxbqh7eqd6hgc6.eastasia-01.azurewebsites.net/';
 const API_BASE_URL =
   configuredApiBaseUrl ||
   (process.env.NODE_ENV === 'development'
