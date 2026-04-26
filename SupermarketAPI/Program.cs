@@ -144,6 +144,25 @@ if (app.Environment.IsDevelopment())
         {
             startupLogger.LogError("Database connection check failed. Verify MySQL host, port, user, password, and authentication plugin settings.");
         }
+        else
+        {
+            // Safe local patch for older dev databases that predate Sprint 3 inventory schema changes.
+            var lowStockThresholdColumnExists = dbContext.Database
+                .SqlQueryRaw<int>(@"
+                                        SELECT COUNT(*) AS Value
+                    FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_SCHEMA = DATABASE()
+                      AND TABLE_NAME = 'Products'
+                      AND COLUMN_NAME = 'LowStockThreshold'")
+                .First() > 0;
+
+            if (!lowStockThresholdColumnExists)
+            {
+                dbContext.Database.ExecuteSqlRaw(
+                    "ALTER TABLE `Products` ADD COLUMN `LowStockThreshold` int NULL;");
+                startupLogger.LogInformation("Patched Products.LowStockThreshold column for local development.");
+            }
+        }
 
         if (autoMigrateOnStartup)
         {
