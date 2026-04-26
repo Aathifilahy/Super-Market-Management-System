@@ -1,6 +1,7 @@
 describe("Customer Cart and Checkout Flow", () => {
   const addFirstAvailableProductToCart = () => {
     cy.visit("/shop");
+    cy.intercept("POST", "**/api/cart/items").as("addToCart");
 
     cy.get('[data-testid="product-card"]', { timeout: 10000 }).should(
       "have.length.greaterThan",
@@ -16,6 +17,10 @@ describe("Customer Cart and Checkout Flow", () => {
 
       cy.wrap(availableCard).find('[data-testid="add-to-cart-btn"]').click();
     });
+
+    cy.wait("@addToCart")
+      .its("response.statusCode")
+      .should("be.oneOf", [200, 201]);
   };
 
   beforeEach(() => {
@@ -28,7 +33,11 @@ describe("Customer Cart and Checkout Flow", () => {
     addFirstAvailableProductToCart();
 
     cy.visit("/cart");
+    cy.intercept("PUT", "**/api/cart/items/*").as("updateCartItem");
     cy.get('[data-testid="quantity-input"]').first().should("be.visible").type("{selectall}2");
+    cy.wait("@updateCartItem")
+      .its("response.statusCode")
+      .should("eq", 200);
     cy.get('[data-testid="cart-total"]').should("be.visible").and("contain", "$");
 
     cy.get('[data-testid="checkout-btn"]').should("be.visible").click();
