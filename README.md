@@ -9,6 +9,7 @@ It includes:
 - MySQL database
 - JWT authentication and authorization
 - Selenium smoke test for product flow
+- JMeter performance tests (load + stress)
 
 ## Contents
 
@@ -21,7 +22,7 @@ It includes:
 - Run the Project Locally
 - API Overview
 - Frontend Routes
-- Testing
+- Testing (including JMeter performance tests)
 - Troubleshooting
 - Security Notes
 
@@ -92,23 +93,33 @@ Frontend URL in development:
 
 - MySQL
 
+### Testing Tools
+
+- **Selenium** – smoke test (UI)
+- **JMeter** – load & stress testing (performance)
+- **Postman** – API testing (documentation)
+
 ## Project Structure
 
 ~~~text
 Super-Market-Management-System/
-	SupermarketAPI/           # ASP.NET Core Web API
-		Controllers/            # Auth, Cart, Orders, Products
-		Data/                   # DbContext and EF config
-		Models/                 # Entity models and DTOs
-		Services/               # Cart, Order, JWT services
-		Interfaces/             # Service and repository interfaces
-	frontend/                 # React app
-		src/pages/              # UI pages
-		src/services/           # API client services
-		src/types/              # TypeScript models/types
-		src/context/            # Auth context provider
-	tests/selenium/           # Selenium test script
-	docs/                     # Test reports, plans, QA sheets, Postman docs
+├── SupermarketAPI/           # ASP.NET Core Web API
+│   ├── Controllers/          # Auth, Cart, Orders, Products
+│   ├── Data/                 # DbContext and EF config
+│   ├── Models/               # Entity models and DTOs
+│   ├── Services/             # Cart, Order, JWT services
+│   └── Interfaces/           # Service and repository interfaces
+├── frontend/                 # React app
+│   └── src/
+│       ├── pages/            # UI pages
+│       ├── services/         # API client services
+│       ├── types/            # TypeScript models
+│       └── context/          # Auth context provider
+├── tests/
+│   ├── selenium/             # Selenium test script
+│   ├── performance/          # JMeter load & stress tests
+│   └── postman/              # Postman collections
+└── docs/                     # Test reports, plans, QA sheets
 ~~~
 
 ## Prerequisites
@@ -117,6 +128,8 @@ Super-Market-Management-System/
 - Node.js LTS and npm
 - MySQL server running locally
 - Google Chrome (for Selenium test)
+- **Java** (for JMeter)
+- **JMeter 5.6+** (download from https://jmeter.apache.org)
 
 ## Configuration
 
@@ -185,6 +198,10 @@ cd tests/selenium
 npm install
 npm test
 ~~~
+
+### 4) JMeter performance tests (Members 4 & 5)
+
+See detailed section below.
 
 ## Database Notes
 
@@ -272,56 +289,10 @@ Suggested verification flow:
 5. Checkout
 6. Orders list and details
 
-## Troubleshooting
+### JMeter Performance Tests (Members 4 & 5)
 
-### Backend cannot connect to database
+We use **Apache JMeter** to validate system performance under load and stress.
 
-- Verify MySQL is running on localhost:3306
-- Verify username/password in appsettings.json
-- Verify database name in connection string
+#### Test files location
 
-### 401 Unauthorized on protected endpoints
-
-- Login first to get JWT
-- Ensure Authorization header is present as Bearer token
-- Verify Jwt settings are consistent and key length is at least 32 chars
-
-### Frontend cannot call backend
-
-- Ensure backend is running on http://localhost:5224
-- Ensure frontend API base URL matches backend URL
-- Ensure CORS in Program.cs allows http://localhost:3000
-
-### Cart update fails with product mismatch
-
-- Current backend cart update requires the matching productId for the cart item.
-- Frontend cartApi resolves this automatically before sending the update request.
-
-## Security Notes
-
-- Do not commit real production secrets to appsettings.json.
-- Move JWT key and database credentials to environment variables or secret manager for production.
-- Use HTTPS and secure cookie/token strategies in production environments.
-
-### Dev note: create an Admin user (local)
-
-Sprint 2 customer registration always creates a Customer account. For local testing of inventory actions,
-promote a user to Admin directly in MySQL.
-
-In the Users table the Role is stored as an integer enum:
-
-- 0 = Customer
-- 1 = Admin
-- 2 = InventoryManager
-- 3 = Cashier
-
-Example:
-
-~~~sql
-SELECT id, email, role FROM users;
-UPDATE users SET role = 1 WHERE email = 'admin@gmail.com';
-~~~
-
-## License
-
-See LICENSE file in the repository root.
+All JMeter test plans and results are in `tests/performance/`:
