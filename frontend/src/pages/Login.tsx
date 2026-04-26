@@ -328,6 +328,7 @@ function Login() {
                       label="Email"
                       type="email"
                       autoComplete="email"
+                      inputProps={{ 'data-cy': 'login-email' }}
                       error={Boolean(errors.email)}
                       helperText={errors.email?.message ?? 'Enter the email linked to your account.'}
                       sx={textFieldSx}
@@ -347,6 +348,7 @@ function Login() {
                         type={showPassword ? 'text' : 'password'}
                         autoComplete="current-password"
                         label="Password"
+                        inputProps={{ 'data-cy': 'login-password' }}
                         sx={{
                           borderRadius: 3,
                           bgcolor: alpha(theme.palette.common.white, 0.94),
@@ -397,6 +399,7 @@ function Login() {
                       size="large"
                       fullWidth
                       disabled={isLoading || !isValid}
+                      data-cy="login-submit"
                       sx={{
                         py: 1.5,
                         borderRadius: 999,

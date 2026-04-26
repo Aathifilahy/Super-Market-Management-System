@@ -31,6 +31,7 @@
     "yup": "^1.7.1"
   },
   "devDependencies": {
+    "cypress": "^15.14.1",
     "patch-package": "^8.0.0"
   },
   "scripts": {
@@ -38,7 +39,9 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "cypress:open": "cypress open",
+    "cypress:run": "cypress run"
   },
   "eslintConfig": {
     "extends": [

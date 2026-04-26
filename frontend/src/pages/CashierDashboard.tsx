@@ -450,6 +450,7 @@ export default function CashierDashboard() {
             borderColor: disabled ? 'divider' : 'primary.light',
             opacity: disabled ? 0.72 : 1,
           }}
+          data-cy="product-item"
         >
           <CardContent>
             <Stack spacing={2}>
@@ -496,6 +497,7 @@ export default function CashierDashboard() {
                 fullWidth
                 disabled={disabled || !activeSession}
                 onClick={() => handleAddToCart(item)}
+                data-cy="add-to-cart"
               >
                 {disabled ? 'Unavailable' : `Add to ${activeSession?.name ?? 'Bill'}`}
               </Button>
@@ -508,7 +510,7 @@ export default function CashierDashboard() {
 
   return (
     <>
-      <Grid container spacing={3}>
+      <Grid container spacing={3} data-cy="pos-page">
         <Grid size={{ xs: 12, xl: 8 }}>
           <Stack spacing={3}>
             <Grid container spacing={2}>
@@ -564,6 +566,7 @@ export default function CashierDashboard() {
                         placeholder="Milk, Bakery, POS-000005, or product ID"
                         value={searchText}
                         onChange={(event) => setSearchText(event.target.value)}
+                        inputProps={{ 'data-cy': 'product-search' }}
                       />
                     </Grid>
                     <Grid size={{ xs: 12, md: 3 }}>
@@ -623,7 +626,11 @@ export default function CashierDashboard() {
             </Card>
 
             {error ? <Alert severity="error">{error}</Alert> : null}
-            {cartMessage ? <Alert severity="success">{cartMessage}</Alert> : null}
+            {cartMessage ? (
+              <Alert severity="success" data-cy="sale-success">
+                {cartMessage}
+              </Alert>
+            ) : null}
 
             {isLoading ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
@@ -673,14 +680,21 @@ export default function CashierDashboard() {
                   </Tabs>
 
                   <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
-                    <Button variant="contained" onClick={handleAddSession} disabled={sessions.length >= MAX_SESSIONS}>
+                    <Button
+                      variant="contained"
+                      onClick={handleAddSession}
+                      disabled={sessions.length >= MAX_SESSIONS}
+                    >
                       Add Session
                     </Button>
-                    <Button variant="outlined" onClick={handleNewTransaction} disabled={cartItems.length === 0}>
+                    <Button
+                      variant="outlined"
+                      onClick={handleNewTransaction}
+                      disabled={cartItems.length === 0}
+                    >
                       New Transaction
                     </Button>
                   </Stack>
-
                   <Divider />
 
                   <Box>
@@ -697,7 +711,12 @@ export default function CashierDashboard() {
                   ) : (
                     <Stack spacing={2}>
                       {cartItems.map((item) => (
-                        <Card key={item.id} variant="outlined" sx={{ borderRadius: 3 }}>
+                        <Card
+                          key={item.id}
+                          variant="outlined"
+                          sx={{ borderRadius: 3 }}
+                          data-cy="cart-item"
+                        >
                           <CardContent>
                             <Stack spacing={1.5}>
                               <Stack direction="row" justifyContent="space-between" spacing={2}>
@@ -856,7 +875,13 @@ export default function CashierDashboard() {
         </Grid>
       </Grid>
 
-      <Dialog open={isPaymentOpen} onClose={() => (!isCheckoutLoading ? setIsPaymentOpen(false) : undefined)} fullWidth maxWidth="sm">
+      <Dialog
+        open={isPaymentOpen}
+        onClose={() => (!isCheckoutLoading ? setIsPaymentOpen(false) : undefined)}
+        fullWidth
+        maxWidth="sm"
+        data-cy="payment-modal"
+      >
         <DialogTitle>Payment Simulation</DialogTitle>
         <DialogContent>
           <Stack spacing={2.5} sx={{ pt: 1 }}>
@@ -885,7 +910,7 @@ export default function CashierDashboard() {
                   label="Amount Tendered"
                   value={amountTenderedInput}
                   onChange={(event) => setAmountTenderedInput(event.target.value)}
-                  inputProps={{ min: cartSubtotal, step: '0.01' }}
+                  inputProps={{ min: cartSubtotal, step: '0.01', 'data-cy': 'amount-tendered-input' }}
                 />
                 <Alert severity={changeDue >= 0 ? 'success' : 'warning'}>
                   {changeDue >= 0
@@ -921,6 +946,7 @@ export default function CashierDashboard() {
             variant="contained"
             onClick={() => void handleCheckout()}
             disabled={isCheckoutLoading || (paymentMethod === 'Cash' && changeDue < 0)}
+            data-cy="complete-sale"
           >
             {isCheckoutLoading ? <CircularProgress size={20} color="inherit" /> : 'Complete Sale'}
           </Button>
