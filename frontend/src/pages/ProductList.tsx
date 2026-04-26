@@ -161,10 +161,10 @@ const ProductList: React.FC = () => {
       {products.length === 0 ? (
         <Alert severity="info">No products found. Add your first product!</Alert>
       ) : (
-        <Grid container spacing={3}>
+        <Grid container spacing={3} data-testid="product-list">
           {products.map((product) => (
             <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={product.id}>
-              <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }} data-testid="product-card">
                 {product.imageUrl && (
                   <CardMedia
                     component="img"
@@ -233,7 +233,11 @@ const ProductList: React.FC = () => {
                         label="Qty"
                         type="number"
                         value={qtyById[product.id] ?? 1}
-                        inputProps={{ min: 1, max: product.quantity }}
+                        inputProps={{
+                          min: 1,
+                          max: product.quantity,
+                          'data-testid': 'quantity-input',
+                        }}
                         onChange={(e) => {
                           const value = Number(e.target.value);
                           setQtyById((prev) => ({
@@ -246,6 +250,7 @@ const ProductList: React.FC = () => {
                       <Button
                         variant="contained"
                         fullWidth
+                        data-testid="add-to-cart-btn"
                         disabled={product.quantity <= 0 || product.isExpired}
                         onClick={() => void handleAddToCart(product)}
                       >

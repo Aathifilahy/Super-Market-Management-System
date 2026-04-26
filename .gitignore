@@ -96,6 +96,9 @@ yarn-error.log*
 # testing
 **/coverage/
 **/.nyc_output/
+cypress/downloads/
+cypress/screenshots/
+cypress/videos/
 
 # 🔐 Environment files (NEVER commit these)
 **/.env

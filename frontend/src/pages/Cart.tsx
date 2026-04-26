@@ -175,7 +175,7 @@ function Cart() {
         <Card sx={{ borderRadius: 4, boxShadow: 3 }}>
           <CardContent sx={{ py: 8 }}>
             <Stack spacing={2} alignItems="center">
-              <Typography variant="h5" fontWeight={700}>
+              <Typography variant="h5" fontWeight={700} data-testid="empty-cart-message">
                 Your cart is empty
               </Typography>
               <Typography color="text.secondary" textAlign="center" maxWidth={480}>
@@ -249,7 +249,10 @@ function Cart() {
                           value={item.quantity}
                           size="small"
                           sx={{ width: 90 }}
-                          inputProps={{ min: 1 }}
+                          inputProps={{
+                            min: 1,
+                            'data-testid': 'quantity-input',
+                          }}
                           onChange={(event) => {
                             const value = Number(event.target.value);
                             if (Number.isNaN(value)) {
@@ -273,6 +276,7 @@ function Cart() {
 
                       <Button
                         color="error"
+                        data-testid="remove-cart-item"
                         startIcon={<DeleteOutlineIcon />}
                         onClick={() => void handleRemove(item.id)}
                         disabled={busy}
@@ -299,7 +303,7 @@ function Cart() {
                 </Box>
                 <Box display="flex" justifyContent="space-between" alignItems="center">
                   <Typography variant="h6">Total</Typography>
-                  <Typography variant="h5" fontWeight={700} color="primary.main">
+                  <Typography variant="h5" fontWeight={700} color="primary.main" data-testid="cart-total">
                     ${total.toFixed(2)}
                   </Typography>
                 </Box>
@@ -314,6 +318,7 @@ function Cart() {
                   </Button>
                   <Button
                     variant="contained"
+                    data-testid="checkout-btn"
                     startIcon={<ShoppingCartCheckoutIcon />}
                     onClick={() => navigate('/checkout')}
                   >

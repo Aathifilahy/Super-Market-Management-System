@@ -100,7 +100,7 @@ function Checkout() {
                 </Typography>
               </Box>
 
-              <Alert severity="success">
+              <Alert severity="success" data-testid="checkout-success-message">
                 Payment status: {order.paymentStatus}. Total charged: ${order.totalAmount.toFixed(2)}.
               </Alert>
 
@@ -152,14 +152,14 @@ function Checkout() {
               </Typography>
             </Box>
 
-            {error ? <Alert severity="error">{error}</Alert> : null}
+            {error ? <Alert severity="error" data-testid="checkout-error-message">{error}</Alert> : null}
 
             {isEmpty ? (
               <Card variant="outlined" sx={{ borderRadius: 3 }}>
-                <CardContent>
+                <CardContent data-testid="checkout-error-message">
                   <Stack spacing={2} alignItems="flex-start">
                     <Typography variant="h6">Your cart is empty</Typography>
-                    <Typography color="text.secondary">
+                    <Typography color="text.secondary" data-testid="empty-cart-message">
                       Add items to your cart before proceeding to checkout.
                     </Typography>
                     <Button variant="contained" onClick={() => navigate('/cart')}>
@@ -221,6 +221,7 @@ function Checkout() {
                         multiline
                         minRows={4}
                         value={shippingAddress}
+                        inputProps={{ 'data-testid': 'shipping-address-input' }}
                         onChange={(event) => setShippingAddress(event.target.value)}
                         helperText="Enter the full address for delivery."
                       />
@@ -245,6 +246,7 @@ function Checkout() {
                         <Button
                           variant="contained"
                           fullWidth
+                          data-testid="checkout-btn"
                           onClick={() => void handlePlaceOrder()}
                           disabled={placingOrder || !shippingAddress.trim()}
                         >

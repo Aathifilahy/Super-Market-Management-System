@@ -1,0 +1,9 @@
+{
+  "name": "Cypress Demo Customer",
+  "email": "cypress.customer@example.com",
+  "password": "Test1234!",
+  "confirmPassword": "Test1234!",
+  "role": "Customer",
+  "address": "123 Demo Street",
+  "phone": "0712345678"
+}
