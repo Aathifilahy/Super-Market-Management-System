@@ -154,7 +154,7 @@ function Cart() {
   }
 
   return (
-    <Stack spacing={3}>
+    <Stack spacing={3} data-testid="cart-page">
       <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={2}>
         <Box>
           <Typography variant="h4" fontWeight={700}>
@@ -193,7 +193,7 @@ function Cart() {
             const busy = actionLoadingId === item.id;
 
             return (
-              <Card key={item.id} sx={{ borderRadius: 4, boxShadow: 2 }}>
+              <Card key={item.id} sx={{ borderRadius: 4, boxShadow: 2 }} data-testid="cart-item">
                 <CardContent>
                   <Box
                     display="grid"
@@ -316,6 +316,7 @@ function Cart() {
                     variant="contained"
                     startIcon={<ShoppingCartCheckoutIcon />}
                     onClick={() => navigate('/checkout')}
+                    data-testid="checkout-button"
                   >
                     Proceed to Checkout
                   </Button>

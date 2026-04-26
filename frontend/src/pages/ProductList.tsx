@@ -248,6 +248,7 @@ const ProductList: React.FC = () => {
                         fullWidth
                         disabled={product.quantity <= 0 || product.isExpired}
                         onClick={() => void handleAddToCart(product)}
+                        data-testid="add-to-cart"
                       >
                         Add to Cart
                       </Button>

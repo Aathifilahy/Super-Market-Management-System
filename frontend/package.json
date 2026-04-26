@@ -31,6 +31,7 @@
     "yup": "^1.7.1"
   },
   "devDependencies": {
+    "cypress": "^15.14.1",
     "patch-package": "^8.0.0"
   },
   "scripts": {

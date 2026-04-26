@@ -100,7 +100,7 @@ function Checkout() {
                 </Typography>
               </Box>
 
-              <Alert severity="success">
+              <Alert severity="success" data-testid="order-success-message">
                 Payment status: {order.paymentStatus}. Total charged: ${order.totalAmount.toFixed(2)}.
               </Alert>
 
@@ -223,6 +223,7 @@ function Checkout() {
                         value={shippingAddress}
                         onChange={(event) => setShippingAddress(event.target.value)}
                         helperText="Enter the full address for delivery."
+                        inputProps={{ 'data-testid': 'shipping-address' }}
                       />
 
                       <FormControl>
@@ -247,6 +248,7 @@ function Checkout() {
                           fullWidth
                           onClick={() => void handlePlaceOrder()}
                           disabled={placingOrder || !shippingAddress.trim()}
+                          data-testid="place-order-button"
                         >
                           {placingOrder ? <CircularProgress size={24} color="inherit" /> : 'Place Order'}
                         </Button>
