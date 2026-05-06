@@ -163,7 +163,7 @@ function Login() {
         }}
       >
         <Grid container>
-          <Grid size={{ xs: 12, md: 5 }}>
+          <Grid item xs={12} md={5}>
             <Box
               sx={{
                 position: 'relative',
@@ -216,7 +216,7 @@ function Login() {
                 </Box>
 
                 <Grid container spacing={1.5}>
-                  <Grid size={{ xs: 6 }}>
+                  <Grid item xs={6}>
                     <Box
                       sx={{
                         borderRadius: 3,
@@ -234,7 +234,7 @@ function Login() {
                       </Typography>
                     </Box>
                   </Grid>
-                  <Grid size={{ xs: 6 }}>
+                  <Grid item xs={6}>
                     <Box
                       sx={{
                         borderRadius: 3,
@@ -294,7 +294,7 @@ function Login() {
             </Box>
           </Grid>
 
-          <Grid size={{ xs: 12, md: 7 }}>
+          <Grid item xs={12} md={7}>
             <CardContent sx={{ p: { xs: 3, sm: 4, md: 5 } }}>
               <Stack spacing={3.5}>
                 <Box>

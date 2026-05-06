@@ -100,7 +100,7 @@ export default function Landing() {
       >
         <CardContent sx={{ p: { xs: 3, md: 4 } }}>
           <Grid container spacing={{ xs: 3, md: 3 }} alignItems="center">
-            <Grid size={{ xs: 12, md: 7 }}>
+            <Grid item xs={12} md={7}>
               <Stack spacing={3} sx={{ height: '100%' }}>
                 <Box>
                   <Typography
@@ -199,7 +199,7 @@ export default function Landing() {
               </Stack>
             </Grid>
 
-            <Grid size={{ xs: 12, md: 5 }}>
+            <Grid item xs={12} md={5}>
               <Card
                 sx={{
                   height: '100%',

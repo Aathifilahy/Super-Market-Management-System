@@ -187,7 +187,7 @@ function Register() {
         }}
       >
         <Grid container>
-          <Grid size={{ xs: 12, md: 4.5 }}>
+          <Grid item xs={12} md={5}>
             <Box
               sx={{
                 position: 'relative',
@@ -299,7 +299,7 @@ function Register() {
             </Box>
           </Grid>
 
-          <Grid size={{ xs: 12, md: 7.5 }}>
+          <Grid item xs={12} md={7}>
             <CardContent sx={{ p: { xs: 3, sm: 4, md: 5 } }}>
               <Stack spacing={3.5}>
                 <Box>
@@ -328,7 +328,7 @@ function Register() {
 
                 <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate>
                   <Grid container spacing={2.5}>
-                    <Grid size={{ xs: 12, md: 6 }}>
+                    <Grid item xs={12} md={6}>
                       <TextField
                         fullWidth
                         label="Name"
@@ -344,7 +344,7 @@ function Register() {
                       />
                     </Grid>
 
-                    <Grid size={{ xs: 12, md: 6 }}>
+                    <Grid item xs={12} md={6}>
                       <TextField
                         fullWidth
                         label="Email"
@@ -363,7 +363,7 @@ function Register() {
                       />
                     </Grid>
 
-                    <Grid size={{ xs: 12, md: 6 }}>
+                    <Grid item xs={12} md={6}>
                       <FormControl fullWidth error={Boolean(errors.password)}>
                         <InputLabel htmlFor="register-password">Password</InputLabel>
                         <OutlinedInput
@@ -433,7 +433,7 @@ function Register() {
                       </Box>
                     </Grid>
 
-                    <Grid size={{ xs: 12, md: 6 }}>
+                    <Grid item xs={12} md={6}>
                       <FormControl fullWidth error={Boolean(errors.confirmPassword)}>
                         <InputLabel htmlFor="register-confirm-password">Confirm Password</InputLabel>
                         <OutlinedInput
@@ -470,7 +470,7 @@ function Register() {
                       </FormControl>
                     </Grid>
 
-                    <Grid size={{ xs: 12 }}>
+                    <Grid item xs={12}>
                       <TextField
                         fullWidth
                         label="Address"
@@ -485,7 +485,7 @@ function Register() {
                       />
                     </Grid>
 
-                    <Grid size={{ xs: 12 }}>
+                    <Grid item xs={12}>
                       <TextField
                         fullWidth
                         label="Phone"
@@ -502,7 +502,7 @@ function Register() {
                       />
                     </Grid>
 
-                    <Grid size={{ xs: 12 }}>
+                    <Grid item xs={12}>
                       <Button
                         type="submit"
                         variant="contained"

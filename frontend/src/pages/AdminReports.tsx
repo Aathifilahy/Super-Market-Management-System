@@ -1,641 +1,182 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Alert,
-  Box,
-  Button,
-  Card,
-  CardContent,
-  CircularProgress,
-  FormControl,
-  Grid,
-  InputLabel,
-  MenuItem,
-  Select,
-  Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  TextField,
-  Typography,
+  Box, Button, Card, CardContent, CircularProgress, FormControl, Grid, InputLabel, MenuItem,
+  Select, Stack, TextField, Typography, useTheme, alpha
 } from '@mui/material';
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Legend,
-  Line,
-  LineChart,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+import { BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import { useSearchParams } from 'react-router-dom';
-import adminReportsApi, {
-  AdminReportsQuery,
-  DailySalesReport,
-  MonthlyRevenueReport,
-  OrderSummaryReport,
-  TopSellingProductsReport,
-} from '../services/adminReportsApi';
+import adminReportsApi, { AdminReportsQuery, DailySalesReport, MonthlyRevenueReport, OrderSummaryReport, TopSellingProductsReport } from '../services/adminReportsApi';
+import DataTable from '../components/DataTable';
+import { toast } from 'react-toastify';
 
-function toIsoDate(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
-function getStartOfWeek(date: Date): Date {
-  const next = new Date(date);
-  const day = next.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  next.setDate(next.getDate() + diff);
-  return next;
-}
-
-function buildCsvFileName(reportType: string, startDate: string, endDate: string): string {
-  return `${reportType}-${startDate.replaceAll('-', '')}-${endDate.replaceAll('-', '')}.csv`;
-}
-
-type PresetRange = 'today' | 'thisWeek' | 'thisMonth' | 'custom';
-
-const today = new Date();
-const todayIso = toIsoDate(today);
-const monthStartIso = toIsoDate(new Date(today.getFullYear(), today.getMonth(), 1));
+function toIsoDate(date: Date) { return date.toISOString().slice(0, 10); }
 
 export default function AdminReports() {
+  const theme = useTheme();
   const [searchParams, setSearchParams] = useSearchParams();
-
-  const [presetRange, setPresetRange] = useState<PresetRange>(
-    (searchParams.get('preset') as PresetRange | null) ?? 'thisMonth'
-  );
-  const [rangeStart, setRangeStart] = useState<string>(searchParams.get('startDate') ?? monthStartIso);
-  const [rangeEnd, setRangeEnd] = useState<string>(searchParams.get('endDate') ?? todayIso);
-  const [category, setCategory] = useState<string>(searchParams.get('category') ?? '');
-  const [paymentMethod, setPaymentMethod] = useState<string>(searchParams.get('paymentMethod') ?? '');
-  const [customer, setCustomer] = useState<string>(searchParams.get('customer') ?? '');
-  const [topN, setTopN] = useState<number>(Number(searchParams.get('topN') ?? '10') || 10);
-  const [sortBy, setSortBy] = useState<'quantity' | 'revenue'>(
-    searchParams.get('sortBy') === 'revenue' ? 'revenue' : 'quantity'
-  );
+  const [rangeStart, setRangeStart] = useState(searchParams.get('startDate') ?? toIsoDate(new Date(new Date().getFullYear(), new Date().getMonth(), 1)));
+  const [rangeEnd, setRangeEnd] = useState(searchParams.get('endDate') ?? toIsoDate(new Date()));
+  const [category, setCategory] = useState(searchParams.get('category') ?? '');
+  const [paymentMethod, setPaymentMethod] = useState(searchParams.get('paymentMethod') ?? '');
+  const [customer, setCustomer] = useState(searchParams.get('customer') ?? '');
+  const [topN, setTopN] = useState(Number(searchParams.get('topN') ?? '10') || 10);
+  const [sortBy, setSortBy] = useState<'quantity' | 'revenue'>(searchParams.get('sortBy') === 'revenue' ? 'revenue' : 'quantity');
 
   const [dailySales, setDailySales] = useState<DailySalesReport | null>(null);
   const [monthlyRevenue, setMonthlyRevenue] = useState<MonthlyRevenueReport | null>(null);
   const [topProducts, setTopProducts] = useState<TopSellingProductsReport | null>(null);
   const [orderSummary, setOrderSummary] = useState<OrderSummaryReport | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [exportError, setExportError] = useState<string | null>(null);
 
-  const chartPalette = ['#1976d2', '#2e7d32', '#ed6c02', '#9c27b0', '#d32f2f', '#0288d1'];
+  const chartPalette = [theme.palette.primary.main, theme.palette.secondary.main, theme.palette.warning.main, theme.palette.info.main, theme.palette.success.main, theme.palette.error.main];
 
-  const commonQuery = useMemo<AdminReportsQuery>(
-    () => ({
-      startDate: rangeStart,
-      endDate: rangeEnd,
-      category: category || undefined,
-      paymentMethod: paymentMethod || undefined,
-      customer: customer || undefined,
-    }),
-    [category, customer, paymentMethod, rangeEnd, rangeStart]
-  );
+  const commonQuery = useMemo<AdminReportsQuery>(() => ({ startDate: rangeStart, endDate: rangeEnd, category: category || undefined, paymentMethod: paymentMethod || undefined, customer: customer || undefined }), [category, customer, paymentMethod, rangeEnd, rangeStart]);
 
   useEffect(() => {
-    const nextParams = new URLSearchParams();
-    nextParams.set('preset', presetRange);
-    nextParams.set('startDate', rangeStart);
-    nextParams.set('endDate', rangeEnd);
-
-    if (category) {
-      nextParams.set('category', category);
-    }
-    if (paymentMethod) {
-      nextParams.set('paymentMethod', paymentMethod);
-    }
-    if (customer) {
-      nextParams.set('customer', customer);
-    }
-    if (topN !== 10) {
-      nextParams.set('topN', String(topN));
-    }
-    if (sortBy !== 'quantity') {
-      nextParams.set('sortBy', sortBy);
-    }
-
-    setSearchParams(nextParams, { replace: true });
-  }, [category, customer, paymentMethod, presetRange, rangeEnd, rangeStart, setSearchParams, sortBy, topN]);
-
-  const applyPreset = useCallback((preset: PresetRange) => {
-    const now = new Date();
-    const currentIso = toIsoDate(now);
-    setPresetRange(preset);
-
-    if (preset === 'today') {
-      setRangeStart(currentIso);
-      setRangeEnd(currentIso);
-      return;
-    }
-
-    if (preset === 'thisWeek') {
-      setRangeStart(toIsoDate(getStartOfWeek(now)));
-      setRangeEnd(currentIso);
-      return;
-    }
-
-    if (preset === 'thisMonth') {
-      setRangeStart(toIsoDate(new Date(now.getFullYear(), now.getMonth(), 1)));
-      setRangeEnd(currentIso);
-      return;
-    }
-  }, []);
+    const p = new URLSearchParams();
+    p.set('startDate', rangeStart); p.set('endDate', rangeEnd);
+    if (category) p.set('category', category);
+    if (paymentMethod) p.set('paymentMethod', paymentMethod);
+    if (customer) p.set('customer', customer);
+    if (topN !== 10) p.set('topN', String(topN));
+    if (sortBy !== 'quantity') p.set('sortBy', sortBy);
+    setSearchParams(p, { replace: true });
+  }, [category, customer, paymentMethod, rangeEnd, rangeStart, setSearchParams, sortBy, topN]);
 
   const loadReports = useCallback(async () => {
-    if (rangeStart > rangeEnd) {
-      setError('Start date must be before or equal to end date.');
-      return;
-    }
-
+    if (rangeStart > rangeEnd) { toast.error('Start date must be before end date.'); return; }
     try {
       setIsLoading(true);
-      setError(null);
-      setExportError(null);
-
-      const [dailyData, monthlyData, topData, orderData] = await Promise.all([
+      const [d, m, t, o] = await Promise.all([
         adminReportsApi.getDailySales(commonQuery),
         adminReportsApi.getMonthlyRevenue(commonQuery),
-        adminReportsApi.getTopProducts({
-          ...commonQuery,
-          topN,
-          sortBy,
-        }),
+        adminReportsApi.getTopProducts({ ...commonQuery, topN, sortBy }),
         adminReportsApi.getOrderSummary(commonQuery),
       ]);
-
-      setDailySales(dailyData);
-      setMonthlyRevenue(monthlyData);
-      setTopProducts(topData);
-      setOrderSummary(orderData);
-    } catch (err: any) {
-      setError(err?.response?.data?.message ?? err?.message ?? 'Failed to load reports.');
+      setDailySales(d); setMonthlyRevenue(m); setTopProducts(t); setOrderSummary(o);
+    } catch {
+      toast.error('Failed to load reports.');
     } finally {
       setIsLoading(false);
     }
   }, [commonQuery, rangeEnd, rangeStart, sortBy, topN]);
 
-  useEffect(() => {
-    void loadReports();
-  }, [loadReports]);
+  useEffect(() => { void loadReports(); }, [loadReports]);
 
-  const handleExport = async (exporter: () => Promise<void>) => {
-    try {
-      setExportError(null);
-      await exporter();
-    } catch (err: any) {
-      setExportError(err?.response?.data?.message ?? err?.message ?? 'Failed to export report.');
-    }
-  };
+  const dailyColumns = [
+    { id: 'productName', label: 'Product Name', sortable: true },
+    { id: 'quantitySold', label: 'Quantity Sold', align: 'right' as const, sortable: true },
+    { id: 'revenue', label: 'Revenue', align: 'right' as const, sortable: true, format: (val: number) => `$${val.toFixed(2)}` },
+  ];
 
-  const monthlyTrendData = (monthlyRevenue?.dailyBreakdown ?? []).map((point) => ({
-    dateLabel: new Date(point.date).toLocaleDateString(),
-    revenue: point.revenue,
-    orders: point.orders,
-  }));
+  const topColumns = [
+    { id: 'productName', label: 'Product', sortable: true },
+    { id: 'quantitySold', label: 'Quantity Sold', align: 'right' as const, sortable: true },
+    { id: 'revenue', label: 'Revenue', align: 'right' as const, sortable: true, format: (val: number) => `$${val.toFixed(2)}` },
+  ];
 
-  const topProductsChartData = (topProducts?.items ?? []).map((item) => ({
-    product: item.productName.length > 16 ? `${item.productName.slice(0, 16)}...` : item.productName,
-    quantity: item.quantitySold,
-    revenue: item.revenue,
-  }));
+  const orderColumns = [
+    { id: 'status', label: 'Status', sortable: true },
+    { id: 'count', label: 'Count', align: 'right' as const, sortable: true },
+    { id: 'totalValue', label: 'Total Value', align: 'right' as const, sortable: true, format: (val: number) => `$${val.toFixed(2)}` },
+  ];
 
-  const orderSummaryChartData = (orderSummary?.items ?? []).map((item) => ({
-    name: item.status,
-    value: item.count,
-    totalValue: item.totalValue,
-  }));
+  const monthlyColumns = [
+    { id: 'date', label: 'Date', sortable: true, format: (val: string) => new Date(val).toLocaleDateString() },
+    { id: 'orders', label: 'Orders', align: 'right' as const, sortable: true },
+    { id: 'revenue', label: 'Revenue', align: 'right' as const, sortable: true, format: (val: number) => `$${val.toFixed(2)}` },
+  ];
 
   return (
-    <Stack spacing={3}>
+    <Stack spacing={3} p={2}>
       <Box>
-        <Typography variant="h4" fontWeight={700} gutterBottom>
-          Admin Reports Dashboard
-        </Typography>
-        <Typography color="text.secondary">
-          Filter sales and order analytics, compare trends, and export CSV files for review.
-        </Typography>
+        <Typography variant="h4" fontWeight="bold">Analytics & Reports</Typography>
+        <Typography color="text.secondary">Comprehensive view of your store's performance metrics.</Typography>
       </Box>
 
-      <Card>
+      {/* Filters */}
+      <Card sx={{ borderRadius: 4, boxShadow: theme.shadows[2] }}>
         <CardContent>
-          <Stack spacing={2.5}>
-            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-              <Button variant={presetRange === 'today' ? 'contained' : 'outlined'} size="small" onClick={() => applyPreset('today')}>
-                Today
-              </Button>
-              <Button variant={presetRange === 'thisWeek' ? 'contained' : 'outlined'} size="small" onClick={() => applyPreset('thisWeek')}>
-                This Week
-              </Button>
-              <Button variant={presetRange === 'thisMonth' ? 'contained' : 'outlined'} size="small" onClick={() => applyPreset('thisMonth')}>
-                This Month
-              </Button>
-              <Button variant={presetRange === 'custom' ? 'contained' : 'outlined'} size="small" onClick={() => setPresetRange('custom')}>
-                Custom
-              </Button>
-            </Stack>
-
-            <Grid container spacing={2}>
-              <Grid size={{ xs: 12, md: 2.4 }}>
-                <TextField
-                  type="date"
-                  fullWidth
-                  label="Range Start"
-                  InputLabelProps={{ shrink: true }}
-                  value={rangeStart}
-                  onChange={(event) => {
-                    setPresetRange('custom');
-                    setRangeStart(event.target.value);
-                  }}
-                />
-              </Grid>
-              <Grid size={{ xs: 12, md: 2.4 }}>
-                <TextField
-                  type="date"
-                  fullWidth
-                  label="Range End"
-                  InputLabelProps={{ shrink: true }}
-                  value={rangeEnd}
-                  onChange={(event) => {
-                    setPresetRange('custom');
-                    setRangeEnd(event.target.value);
-                  }}
-                />
-              </Grid>
-              <Grid size={{ xs: 12, md: 2.4 }}>
-                <TextField
-                  fullWidth
-                  label="Category"
-                  placeholder="Dairy"
-                  value={category}
-                  onChange={(event) => setCategory(event.target.value)}
-                />
-              </Grid>
-              <Grid size={{ xs: 12, md: 2.4 }}>
-                <FormControl fullWidth>
-                  <InputLabel id="payment-method-filter-label">Payment</InputLabel>
-                  <Select
-                    labelId="payment-method-filter-label"
-                    label="Payment"
-                    value={paymentMethod}
-                    onChange={(event) => setPaymentMethod(event.target.value)}
-                  >
-                    <MenuItem value="">All</MenuItem>
-                    <MenuItem value="Cash">Cash</MenuItem>
-                    <MenuItem value="Card">Card</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid size={{ xs: 12, md: 2.4 }}>
-                <TextField
-                  fullWidth
-                  label="Customer"
-                  placeholder="Name or email"
-                  value={customer}
-                  onChange={(event) => setCustomer(event.target.value)}
-                />
-              </Grid>
-              <Grid size={{ xs: 12, md: 2.4 }}>
-                <TextField
-                  type="number"
-                  fullWidth
-                  label="Top N"
-                  value={topN}
-                  onChange={(event) => setTopN(Number(event.target.value) || 10)}
-                  inputProps={{ min: 1, max: 100 }}
-                />
-              </Grid>
-              <Grid size={{ xs: 12, md: 2.4 }}>
-                <FormControl fullWidth>
-                  <InputLabel id="sort-by-label">Top Products Sort</InputLabel>
-                  <Select
-                    labelId="sort-by-label"
-                    label="Top Products Sort"
-                    value={sortBy}
-                    onChange={(event) => setSortBy(event.target.value as 'quantity' | 'revenue')}
-                  >
-                    <MenuItem value="quantity">Quantity</MenuItem>
-                    <MenuItem value="revenue">Revenue</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={3}><TextField type="date" fullWidth label="Start Date" InputLabelProps={{ shrink: true }} value={rangeStart} onChange={e => setRangeStart(e.target.value)} /></Grid>
+            <Grid item xs={12} md={3}><TextField type="date" fullWidth label="End Date" InputLabelProps={{ shrink: true }} value={rangeEnd} onChange={e => setRangeEnd(e.target.value)} /></Grid>
+            <Grid item xs={12} md={3}>
+              <FormControl fullWidth>
+                <InputLabel>Payment</InputLabel>
+                <Select label="Payment" value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}>
+                  <MenuItem value="">All</MenuItem><MenuItem value="Cash">Cash</MenuItem><MenuItem value="Card">Card</MenuItem>
+                </Select>
+              </FormControl>
             </Grid>
-
-            <Stack direction="row" spacing={1.5}>
-              <Button variant="contained" onClick={() => void loadReports()}>
-                Refresh Reports
-              </Button>
-              <Button
-                variant="outlined"
-                onClick={() => {
-                  applyPreset('thisMonth');
-                  setCategory('');
-                  setPaymentMethod('');
-                  setCustomer('');
-                  setTopN(10);
-                  setSortBy('quantity');
-                }}
-              >
-                Reset Filters
-              </Button>
-            </Stack>
-          </Stack>
+            <Grid item xs={12} md={3}><Button fullWidth variant="contained" size="large" sx={{ height: '100%' }} onClick={loadReports}>Apply Filters</Button></Grid>
+          </Grid>
         </CardContent>
       </Card>
 
-      {error ? <Alert severity="error">{error}</Alert> : null}
-      {exportError ? <Alert severity="error">{exportError}</Alert> : null}
-
-      {isLoading ? (
-        <CircularProgress />
-      ) : (
+      {isLoading ? <Box display="flex" justifyContent="center" py={10}><CircularProgress /></Box> : (
         <>
-          {!dailySales && !monthlyRevenue && !topProducts && !orderSummary ? (
-            <Alert severity="info">No report data available for the selected filters.</Alert>
-          ) : null}
-
-          <Grid container spacing={2.5}>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card>
-                <CardContent>
-                  <Typography color="text.secondary">Total Sales</Typography>
-                  <Typography variant="h5" fontWeight={700}>
-                    ${dailySales?.totalSales?.toFixed(2) ?? '0.00'}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card>
-                <CardContent>
-                  <Typography color="text.secondary">Orders in Range</Typography>
-                  <Typography variant="h5" fontWeight={700}>
-                    {dailySales?.numberOfOrders ?? 0}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card>
-                <CardContent>
-                  <Typography color="text.secondary">Avg Order Value</Typography>
-                  <Typography variant="h5" fontWeight={700}>
-                    ${dailySales?.averageOrderValue?.toFixed(2) ?? '0.00'}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card>
-                <CardContent>
-                  <Typography color="text.secondary">Revenue in Range</Typography>
-                  <Typography variant="h5" fontWeight={700}>
-                    ${monthlyRevenue?.monthlyTotal?.toFixed(2) ?? '0.00'}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
+          {/* KPI Cards */}
+          <Grid container spacing={3}>
+            {[
+              { label: 'Total Sales', val: dailySales?.totalSales, pref: '$', col: theme.palette.primary.main },
+              { label: 'Orders Range', val: dailySales?.numberOfOrders, pref: '', col: theme.palette.secondary.main },
+              { label: 'Avg Order Val', val: dailySales?.averageOrderValue, pref: '$', col: theme.palette.warning.main },
+              { label: 'Monthly Revenue', val: monthlyRevenue?.monthlyTotal, pref: '$', col: theme.palette.success.main },
+            ].map(k => (
+              <Grid item xs={12} sm={6} md={3} key={k.label}>
+                <Card sx={{ borderRadius: 4, borderLeft: `6px solid ${k.col}`, boxShadow: theme.shadows[2] }}>
+                  <CardContent>
+                    <Typography color="text.secondary" fontWeight="bold">{k.label}</Typography>
+                    <Typography variant="h4" fontWeight="bold">{k.pref}{k.val?.toFixed(2) ?? '0.00'}</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
           </Grid>
 
-          <Card>
-            <CardContent>
-              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-                <Box>
-                  <Typography variant="h6" fontWeight={700} gutterBottom>
-                    Daily Sales Summary
-                  </Typography>
-                  <Typography color="text.secondary">
-                    {dailySales?.startDate} to {dailySales?.endDate}
-                  </Typography>
+          {/* Charts */}
+          <Grid container spacing={3}>
+            <Grid item xs={12} lg={8}>
+              <Card sx={{ borderRadius: 4, p: 3, boxShadow: theme.shadows[2] }}>
+                <Typography variant="h6" fontWeight="bold" mb={2}>Top Products ({sortBy})</Typography>
+                <Box height={300}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={(topProducts?.items ?? []).map(i => ({ name: i.productName.substring(0, 15), val: sortBy === 'revenue' ? i.revenue : i.quantitySold }))}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip cursor={{ fill: alpha(theme.palette.primary.main, 0.1) }} contentStyle={{ borderRadius: 8 }} />
+                      <Bar dataKey="val" fill={theme.palette.primary.main} radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </Box>
-                <Button
-                  variant="outlined"
-                  onClick={() =>
-                    void handleExport(() =>
-                      adminReportsApi.exportDailySalesCsv(
-                        commonQuery,
-                        buildCsvFileName('daily-sales', rangeStart, rangeEnd)
-                      )
-                    )
-                  }
-                >
-                  Export CSV
-                </Button>
-              </Stack>
-
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Product</TableCell>
-                    <TableCell align="right">Quantity Sold</TableCell>
-                    <TableCell align="right">Revenue</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {(dailySales?.topSellingProducts ?? []).map((item) => (
-                    <TableRow key={item.productId} hover>
-                      <TableCell>{item.productName}</TableCell>
-                      <TableCell align="right">{item.quantitySold}</TableCell>
-                      <TableCell align="right">${item.revenue.toFixed(2)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent>
-              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-                <Typography variant="h6" fontWeight={700}>
-                  Top-Selling Products ({sortBy === 'quantity' ? 'Quantity' : 'Revenue'})
-                </Typography>
-                <Button
-                  variant="outlined"
-                  onClick={() =>
-                    void handleExport(() =>
-                      adminReportsApi.exportTopProductsCsv(
-                        { ...commonQuery, topN, sortBy },
-                        buildCsvFileName('top-products', rangeStart, rangeEnd)
-                      )
-                    )
-                  }
-                >
-                  Export CSV
-                </Button>
-              </Stack>
-
-              <Box sx={{ width: '100%', height: 260, mb: 2 }}>
-                <ResponsiveContainer>
-                  <BarChart data={topProductsChartData} margin={{ top: 12, right: 16, left: 0, bottom: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="product" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    {sortBy === 'revenue' ? (
-                      <Bar dataKey="revenue" name="Revenue" fill="#1976d2" />
-                    ) : (
-                      <Bar dataKey="quantity" name="Quantity Sold" fill="#2e7d32" />
-                    )}
-                  </BarChart>
-                </ResponsiveContainer>
-              </Box>
-
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Product</TableCell>
-                    <TableCell align="right">Quantity Sold</TableCell>
-                    <TableCell align="right">Revenue</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {(topProducts?.items ?? []).map((item) => (
-                    <TableRow key={item.productId} hover>
-                      <TableCell>{item.productName}</TableCell>
-                      <TableCell align="right">{item.quantitySold}</TableCell>
-                      <TableCell align="right">${item.revenue.toFixed(2)}</TableCell>
-                    </TableRow>
-                  ))}
-                  {(topProducts?.items?.length ?? 0) === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={3}>
-                        <Typography color="text.secondary">No top-selling products in this range.</Typography>
-                      </TableCell>
-                    </TableRow>
-                  ) : null}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-
-          <Grid container spacing={2.5}>
-            <Grid size={{ xs: 12, lg: 6 }}>
-              <Card>
-                <CardContent>
-                  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-                    <Typography variant="h6" fontWeight={700}>
-                      Order Summary by Status
-                    </Typography>
-                    <Button
-                      variant="outlined"
-                      onClick={() =>
-                        void handleExport(() =>
-                          adminReportsApi.exportOrderSummaryCsv(
-                            commonQuery,
-                            buildCsvFileName('order-summary', rangeStart, rangeEnd)
-                          )
-                        )
-                      }
-                    >
-                      Export CSV
-                    </Button>
-                  </Stack>
-
-                  <Box sx={{ width: '100%', height: 260, mb: 2 }}>
-                    <ResponsiveContainer>
-                      <PieChart>
-                        <Pie data={orderSummaryChartData} dataKey="value" nameKey="name" outerRadius={88} label>
-                          {orderSummaryChartData.map((entry, index) => (
-                            <Cell key={`${entry.name}-${index}`} fill={chartPalette[index % chartPalette.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </Box>
-
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Status</TableCell>
-                        <TableCell align="right">Count</TableCell>
-                        <TableCell align="right">Total Value</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {(orderSummary?.items ?? []).map((item) => (
-                        <TableRow key={item.status} hover>
-                          <TableCell>{item.status}</TableCell>
-                          <TableCell align="right">{item.count}</TableCell>
-                          <TableCell align="right">${item.totalValue.toFixed(2)}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
               </Card>
             </Grid>
-
-            <Grid size={{ xs: 12, lg: 6 }}>
-              <Card>
-                <CardContent>
-                  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-                    <Typography variant="h6" fontWeight={700}>
-                      Monthly Revenue Daily Breakdown
-                    </Typography>
-                    <Button
-                      variant="outlined"
-                      onClick={() =>
-                        void handleExport(() =>
-                          adminReportsApi.exportMonthlyRevenueCsv(
-                            commonQuery,
-                            buildCsvFileName('monthly-revenue', rangeStart, rangeEnd)
-                          )
-                        )
-                      }
-                    >
-                      Export CSV
-                    </Button>
-                  </Stack>
-
-                  <Box sx={{ width: '100%', height: 260, mb: 2 }}>
-                    <ResponsiveContainer>
-                      <LineChart data={monthlyTrendData} margin={{ top: 12, right: 16, left: 0, bottom: 10 }}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="dateLabel" />
-                        <YAxis />
-                        <Tooltip />
-                        <Legend />
-                        <Line type="monotone" dataKey="revenue" name="Revenue" stroke="#1976d2" strokeWidth={2} dot={false} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </Box>
-
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Date</TableCell>
-                        <TableCell align="right">Orders</TableCell>
-                        <TableCell align="right">Revenue</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {(monthlyRevenue?.dailyBreakdown ?? []).map((point) => (
-                        <TableRow key={point.date} hover>
-                          <TableCell>{new Date(point.date).toLocaleDateString()}</TableCell>
-                          <TableCell align="right">{point.orders}</TableCell>
-                          <TableCell align="right">${point.revenue.toFixed(2)}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
+            <Grid item xs={12} lg={4}>
+              <Card sx={{ borderRadius: 4, p: 3, boxShadow: theme.shadows[2] }}>
+                <Typography variant="h6" fontWeight="bold" mb={2}>Order Status</Typography>
+                <Box height={300}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={orderSummary?.items ?? []} dataKey="count" nameKey="status" cx="50%" cy="50%" innerRadius={60} outerRadius={80}>
+                        {orderSummary?.items.map((_, i) => <Cell key={i} fill={chartPalette[i % chartPalette.length]} />)}
+                      </Pie>
+                      <Tooltip />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </Box>
               </Card>
             </Grid>
           </Grid>
+
+          {/* Data Tables */}
+          <Card sx={{ borderRadius: 4, boxShadow: theme.shadows[2] }}>
+            <CardContent>
+              <Typography variant="h6" fontWeight="bold" mb={2}>Monthly Revenue Daily Breakdown</Typography>
+              <DataTable columns={monthlyColumns} data={monthlyRevenue?.dailyBreakdown ?? []} keyField="date" />
+            </CardContent>
+          </Card>
         </>
       )}
     </Stack>

@@ -292,7 +292,7 @@ function Profile() {
 
           {tab === 0 ? (
             <Grid container spacing={3}>
-              <Grid size={{ xs: 12, md: 4 }}>
+              <Grid item xs={12} md={4}>
                 <Card variant="outlined" sx={{ borderRadius: 3 }}>
                   <CardContent>
                     <Stack spacing={1.5}>
@@ -318,7 +318,7 @@ function Profile() {
                 </Card>
               </Grid>
 
-              <Grid size={{ xs: 12, md: 8 }}>
+              <Grid item xs={12} md={8}>
                 <Box component="form" onSubmit={handleSubmit(onSubmitProfile)} noValidate>
                   <Stack spacing={2.5}>
                     <TextField

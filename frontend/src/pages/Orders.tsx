@@ -1,216 +1,111 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import {
-  Alert,
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Chip,
-  CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  Divider,
-  Stack,
-  Typography,
-} from '@mui/material';
+import { Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Typography, Divider } from '@mui/material';
 import { format } from 'date-fns';
-import { useNavigate } from 'react-router-dom';
 import orderApi from '../services/orderApi';
 import { Order, OrderDetail } from '../types/order';
+import DataTable from '../components/DataTable';
+import StatusBadge from '../components/StatusBadge';
+import { toast } from 'react-toastify';
 
-function getStatusColor(status: string): 'default' | 'warning' | 'success' | 'error' | 'info' {
-  switch (status) {
-    case 'Pending':
-      return 'warning';
-    case 'Confirmed':
-      return 'info';
-    case 'Delivered':
-      return 'success';
-    case 'Cancelled':
-    case 'Failed':
-      return 'error';
-    default:
-      return 'default';
-  }
-}
-
-function Orders() {
-  const navigate = useNavigate();
+export default function Orders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<OrderDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
   const loadOrders = useCallback(async () => {
     try {
       setLoading(true);
-      setError(null);
-      const data = await orderApi.getOrders();
-      setOrders(data);
-    } catch (err) {
-      const message = err && typeof err === 'object' && 'message' in err
-        ? String((err as { message?: unknown }).message)
-        : 'Failed to load orders.';
-      setError(message);
+      setOrders(await orderApi.getOrders());
+    } catch {
+      toast.error('Failed to load orders.');
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    void loadOrders();
-  }, [loadOrders]);
+  useEffect(() => { void loadOrders(); }, [loadOrders]);
 
   const handleViewDetails = async (orderId: number) => {
     try {
       setDetailLoading(true);
-      setError(null);
-      const detail = await orderApi.getOrderDetails(orderId);
-      setSelectedOrder(detail);
-    } catch (err) {
-      const message = err && typeof err === 'object' && 'message' in err
-        ? String((err as { message?: unknown }).message)
-        : 'Failed to load order details.';
-      setError(message);
+      setSelectedOrder(await orderApi.getOrderDetails(orderId));
+    } catch {
+      toast.error('Failed to load order details.');
     } finally {
       setDetailLoading(false);
     }
   };
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-        <CircularProgress />
-      </Box>
-    );
-  }
+  const columns = [
+    { id: 'id', label: 'Order #', format: (val: number) => `#${val}`, sortable: true },
+    { id: 'orderDate', label: 'Date', format: (val: string) => format(new Date(val), 'MMM d, yyyy h:mm a'), sortable: true },
+    { id: 'totalAmount', label: 'Total', format: (val: number) => `$${val.toFixed(2)}`, sortable: true },
+    { id: 'status', label: 'Status', format: (val: string) => <StatusBadge status={val} /> },
+    { id: 'paymentStatus', label: 'Payment', format: (val: string) => <StatusBadge status={val} /> },
+    { id: 'actions', label: 'Actions', align: 'right' as const, format: (_: any, row: Order) => (
+      <Button variant="outlined" size="small" onClick={() => handleViewDetails(row.id)} disabled={detailLoading}>View Details</Button>
+    )},
+  ];
+
+  if (loading) return <Box display="flex" justifyContent="center" mt={10}><CircularProgress /></Box>;
 
   return (
-    <Stack spacing={3}>
+    <Stack spacing={3} p={2}>
       <Box>
-        <Typography variant="h4" fontWeight={700} gutterBottom>
-          My Orders
-        </Typography>
-        <Typography color="text.secondary">
-          Track your purchases and review order details.
-        </Typography>
+        <Typography variant="h4" fontWeight="bold" gutterBottom>My Orders</Typography>
+        <Typography color="text.secondary">Track your purchases and review order details.</Typography>
       </Box>
 
-      {error ? <Alert severity="error">{error}</Alert> : null}
+      <DataTable columns={columns} data={orders} keyField="id" emptyMessage="You have no orders yet." />
 
-      {orders.length === 0 ? (
-        <Card sx={{ borderRadius: 4, boxShadow: 3 }}>
-          <CardContent sx={{ py: 8 }}>
-            <Stack spacing={2} alignItems="center">
-              <Typography variant="h5" fontWeight={700}>
-                No orders yet
-              </Typography>
-              <Typography color="text.secondary" textAlign="center" maxWidth={480}>
-                Once you place an order, it will appear here with status and full details.
-              </Typography>
-            </Stack>
-          </CardContent>
-        </Card>
-      ) : (
-        <Stack spacing={2.5}>
-          {orders.map((order) => (
-            <Card key={order.id} sx={{ borderRadius: 4, boxShadow: 2 }}>
-              <CardContent>
-                <Box
-                  display="grid"
-                  gridTemplateColumns={{ xs: '1fr', md: '1fr auto' }}
-                  gap={2}
-                  alignItems="center"
-                >
-                  <Stack spacing={1}>
-                    <Typography variant="h6" fontWeight={700}>
-                      Order #{order.id}
-                    </Typography>
-                    <Typography color="text.secondary">
-                      Date: {format(new Date(order.orderDate), 'PPP p')}
-                    </Typography>
-                    <Typography color="text.secondary">
-                      Total: ${order.totalAmount.toFixed(2)}
-                    </Typography>
-                    <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
-                      <Chip label={order.status} color={getStatusColor(order.status)} size="small" />
-                      <Chip label={order.paymentStatus} variant="outlined" size="small" />
-                    </Box>
-                  </Stack>
-
-                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-                    <Button variant="outlined" onClick={() => navigate(`/orders/${order.id}`)}>
-                      Open Page
-                    </Button>
-                    <Button variant="contained" onClick={() => void handleViewDetails(order.id)} disabled={detailLoading}>
-                      {detailLoading ? <CircularProgress size={22} color="inherit" /> : 'Quick View'}
-                    </Button>
-                  </Stack>
+      <Dialog open={Boolean(selectedOrder)} onClose={() => setSelectedOrder(null)} fullWidth maxWidth="sm" PaperProps={{ sx: { borderRadius: 4, p: 1 } }}>
+        <DialogTitle variant="h5" fontWeight="bold">Order #{selectedOrder?.id}</DialogTitle>
+        <DialogContent dividers sx={{ border: 'none' }}>
+          {selectedOrder && (
+            <Stack spacing={3}>
+              <Box display="flex" justifyContent="space-between" alignItems="center">
+                <Typography color="text.secondary">{format(new Date(selectedOrder.orderDate), 'PPP p')}</Typography>
+                <Box display="flex" gap={1}>
+                  <StatusBadge status={selectedOrder.status} />
+                  <StatusBadge status={`Pay: ${selectedOrder.paymentStatus}`} />
                 </Box>
-              </CardContent>
-            </Card>
-          ))}
-        </Stack>
-      )}
+              </Box>
+              
+              <Box p={2} bgcolor="grey.50" borderRadius={2}>
+                <Typography variant="body2" color="text.secondary" gutterBottom>Shipping Address</Typography>
+                <Typography fontWeight="medium">{selectedOrder.shippingAddress}</Typography>
+                <Typography variant="body2" color="text.secondary" mt={1} gutterBottom>Payment Method</Typography>
+                <Typography fontWeight="medium">{selectedOrder.paymentMethod}</Typography>
+              </Box>
 
-      <Dialog open={Boolean(selectedOrder)} onClose={() => setSelectedOrder(null)} fullWidth maxWidth="md">
-        <DialogTitle>Order Details</DialogTitle>
-        <DialogContent>
-          {selectedOrder ? (
-            <Stack spacing={2.5} sx={{ mt: 1 }}>
               <Box>
-                <Typography variant="h6" fontWeight={700}>
-                  Order #{selectedOrder.id}
-                </Typography>
-                <Typography color="text.secondary">
-                  {format(new Date(selectedOrder.orderDate), 'PPP p')}
-                </Typography>
-              </Box>
-
-              <Box display="flex" gap={1} flexWrap="wrap">
-                <Chip label={selectedOrder.status} color={getStatusColor(selectedOrder.status)} size="small" />
-                <Chip label={`Payment: ${selectedOrder.paymentStatus}`} variant="outlined" size="small" />
-              </Box>
-
-              <Typography>Shipping Address: {selectedOrder.shippingAddress}</Typography>
-              <Typography>Payment Method: {selectedOrder.paymentMethod}</Typography>
-
-              <Divider />
-
-              <Stack spacing={1.5}>
-                {selectedOrder.items.map((item) => (
-                  <Box key={item.id} display="flex" justifyContent="space-between" gap={2}>
-                    <Box>
-                      <Typography fontWeight={600}>{item.productName}</Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {item.productCategory} | Qty: {item.quantity} x ${item.price.toFixed(2)}
-                      </Typography>
+                <Typography fontWeight="bold" mb={2}>Items</Typography>
+                <Stack spacing={1.5}>
+                  {selectedOrder.items.map((item) => (
+                    <Box key={item.id} display="flex" justifyContent="space-between">
+                      <Box>
+                        <Typography fontWeight="medium">{item.productName}</Typography>
+                        <Typography variant="body2" color="text.secondary">Qty: {item.quantity} x ${item.price.toFixed(2)}</Typography>
+                      </Box>
+                      <Typography fontWeight="bold">${item.lineTotal.toFixed(2)}</Typography>
                     </Box>
-                    <Typography fontWeight={700}>${item.lineTotal.toFixed(2)}</Typography>
-                  </Box>
-                ))}
-              </Stack>
+                  ))}
+                </Stack>
+              </Box>
 
               <Divider />
-
               <Box display="flex" justifyContent="space-between" alignItems="center">
                 <Typography variant="h6">Total</Typography>
-                <Typography variant="h6" fontWeight={700} color="primary.main">
-                  ${selectedOrder.totalAmount.toFixed(2)}
-                </Typography>
+                <Typography variant="h5" fontWeight="bold" color="primary.main">${selectedOrder.totalAmount.toFixed(2)}</Typography>
               </Box>
             </Stack>
-          ) : null}
+          )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setSelectedOrder(null)}>Close</Button>
+        <DialogActions sx={{ p: 3 }}>
+          <Button onClick={() => setSelectedOrder(null)} variant="outlined">Close</Button>
         </DialogActions>
       </Dialog>
     </Stack>
   );
 }
-
-export default Orders;

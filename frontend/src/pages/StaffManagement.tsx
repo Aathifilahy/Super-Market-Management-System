@@ -1,46 +1,21 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import {
-  Alert,
-  Box,
-  Button,
-  Card,
-  CardContent,
-  CircularProgress,
-  FormControl,
-  InputLabel,
-  List,
-  ListItemButton,
-  ListItemText,
-  MenuItem,
-  Select,
-  Stack,
-  TextField,
-  Typography,
-  Chip,
-  Divider,
-  Grid,
+  Box, Button, CircularProgress, Drawer, FormControl, IconButton, InputLabel, MenuItem,
+  Select, Stack, TextField, Typography, Divider, IconButton as MuiIconButton
 } from '@mui/material';
+import { Close, Add, Search } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { SubmitHandler, useForm } from 'react-hook-form';
 import { useAuth } from '../hooks/useAuth';
-import {
-  adminUsersApi,
-  AdminUsersApiError,
-  CreateStaffUserPayload,
-  CreatedStaffUserResponse,
-  StaffUserSummary,
-  StaffRole,
-} from '../services/adminUsersApi';
+import { adminUsersApi, CreateStaffUserPayload, StaffUserSummary, StaffRole } from '../services/adminUsersApi';
 import { normalizeRole } from '../utils/role';
+import DataTable from '../components/DataTable';
+import StatusBadge from '../components/StatusBadge';
+import { toast } from 'react-toastify';
 
-type StaffFormData = {
-  name: string;
-  email: string;
-  password: string;
-  role: StaffRole;
-};
+type StaffFormData = CreateStaffUserPayload;
 
-function readAuthTokenFromStorage(): string | null {
+function readAuthTokenFromStorage() {
   return sessionStorage.getItem('supermarket_auth_token') ?? localStorage.getItem('supermarket_auth_token');
 }
 
@@ -49,274 +24,108 @@ export default function StaffManagement() {
   const { token, user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isStaffLoading, setIsStaffLoading] = useState(false);
-  const [apiError, setApiError] = useState<string | null>(null);
-  const [createdUser, setCreatedUser] = useState<CreatedStaffUserResponse | null>(null);
   const [staffUsers, setStaffUsers] = useState<StaffUserSummary[]>([]);
   const [staffSearch, setStaffSearch] = useState('');
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const isAdmin = useMemo(() => normalizeRole(user?.role) === 'Admin', [user?.role]);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isValid },
-    setValue,
-    watch,
-    reset,
-  } = useForm<StaffFormData>({
+  const { register, handleSubmit, formState: { errors, isValid }, setValue, watch, reset } = useForm<StaffFormData>({
     mode: 'onChange',
-    defaultValues: {
-      name: '',
-      email: '',
-      password: '',
-      role: 'InventoryManager',
-    },
+    defaultValues: { name: '', email: '', password: '', role: 'InventoryManager' },
   });
-
   const selectedRole = watch('role');
 
   const loadStaffUsers = useCallback(async (search?: string) => {
     const authToken = token ?? readAuthTokenFromStorage();
-    if (!authToken) {
-      setApiError('You are not authenticated. Please log in again.');
-      return;
-    }
-
+    if (!authToken) return;
     try {
       setIsStaffLoading(true);
-      setApiError(null);
-      const users = await adminUsersApi.getStaffUsers(authToken, search);
-      setStaffUsers(users);
-    } catch (error) {
-      const parsed = error as AdminUsersApiError;
-      setApiError(parsed?.message ?? 'Failed to load staff users.');
+      setStaffUsers(await adminUsersApi.getStaffUsers(authToken, search));
+    } catch {
+      toast.error('Failed to load staff users.');
     } finally {
       setIsStaffLoading(false);
     }
   }, [token]);
 
-  React.useEffect(() => {
-    if (isAdmin) {
-      void loadStaffUsers();
-    }
-  }, [isAdmin, loadStaffUsers]);
+  useEffect(() => { if (isAdmin) void loadStaffUsers(); }, [isAdmin, loadStaffUsers]);
 
   const onSubmit: SubmitHandler<StaffFormData> = async (data) => {
-    setApiError(null);
-    setCreatedUser(null);
-
     const authToken = token ?? readAuthTokenFromStorage();
-    if (!authToken) {
-      setApiError('You are not authenticated. Please log in again.');
-      return;
-    }
-
-    setIsSubmitting(true);
-
+    if (!authToken) return;
     try {
-      const payload: CreateStaffUserPayload = {
-        name: data.name,
-        email: data.email,
-        password: data.password,
-        role: data.role,
-      };
-
-      const response = await adminUsersApi.createStaffUser(payload, authToken);
-      setCreatedUser(response);
+      setIsSubmitting(true);
+      const response = await adminUsersApi.createStaffUser(data, authToken);
+      toast.success(`Staff user created: ${response.name}`);
       await loadStaffUsers(staffSearch);
-      reset({
-        name: '',
-        email: '',
-        password: '',
-        role: 'InventoryManager',
-      });
-    } catch (error) {
-      const parsed = error as AdminUsersApiError;
-      if (parsed?.status === 403) {
-        setApiError('Supervisor only: you are not allowed to appoint staff from this account.');
-      } else {
-        setApiError(parsed?.message ?? 'Failed to create staff user.');
-      }
+      reset();
+      setDrawerOpen(false);
+    } catch (err: any) {
+      toast.error(err?.status === 403 ? 'Not allowed to appoint staff.' : 'Failed to create staff user.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const columns = [
+    { id: 'name', label: 'Name', sortable: true },
+    { id: 'email', label: 'Email', sortable: true },
+    { id: 'role', label: 'Role', sortable: true, format: (val: string) => <StatusBadge status={val} /> },
+    { id: 'isActive', label: 'Status', sortable: true, format: (val: boolean) => <StatusBadge status={val ? 'Active' : 'Inactive'} /> },
+    { id: 'actions', label: 'Actions', align: 'right' as const, format: (_: any, row: StaffUserSummary) => (
+      <Button size="small" variant="outlined" onClick={() => navigate(`/profile?userId=${row.id}`)}>View Profile</Button>
+    )}
+  ];
+
+  if (!isAdmin) return <Box p={4}><Typography color="error" variant="h6">Access Denied. Admins only.</Typography></Box>;
+
   return (
-    <Stack spacing={3} sx={{ py: { xs: 2, md: 4 } }}>
-      <Box>
-        <Typography variant="h4" fontWeight={700} gutterBottom>
-          Staff Management
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          View current staff accounts and appoint new staff users.
-        </Typography>
+    <Stack spacing={3} p={2}>
+      <Box display="flex" justifyContent="space-between" alignItems="center">
+        <Box>
+          <Typography variant="h4" fontWeight="bold">Staff Management</Typography>
+          <Typography color="text.secondary">View current staff accounts and appoint new users.</Typography>
+        </Box>
+        <Button variant="contained" startIcon={<Add />} onClick={() => setDrawerOpen(true)}>Appoint Staff</Button>
       </Box>
 
-      {!isAdmin ? (
-        <Alert severity="warning">Only Admin users can access this page.</Alert>
-      ) : null}
+      <Box display="flex" gap={2}>
+        <TextField size="small" label="Search staff" value={staffSearch} onChange={(e) => setStaffSearch(e.target.value)} sx={{ width: 300 }} />
+        <Button variant="outlined" startIcon={<Search />} onClick={() => loadStaffUsers(staffSearch)}>Search</Button>
+      </Box>
 
-      {apiError ? <Alert severity="error">{apiError}</Alert> : null}
+      {isStaffLoading ? (
+        <Box display="flex" justifyContent="center" py={4}><CircularProgress /></Box>
+      ) : (
+        <DataTable columns={columns} data={staffUsers} keyField="id" emptyMessage="No staff accounts found." />
+      )}
 
-      {createdUser ? (
-        <Alert severity="success">
-          Staff user created: <strong>{createdUser.name}</strong> ({createdUser.email}) - role:{' '}
-          <strong>{String(createdUser.role)}</strong>
-        </Alert>
-      ) : null}
-
-      <Grid container spacing={3}>
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Card sx={{ borderRadius: 4, boxShadow: 4, height: '100%' }}>
-            <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
-              <Stack spacing={2}>
-                <Typography variant="h6" fontWeight={700}>
-                  Current Staff Accounts
-                </Typography>
-
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-                  <TextField
-                    fullWidth
-                    label="Search staff"
-                    value={staffSearch}
-                    onChange={(event) => setStaffSearch(event.target.value)}
-                  />
-                  <Button variant="outlined" onClick={() => void loadStaffUsers(staffSearch)}>
-                    Search
-                  </Button>
-                </Stack>
-
-                <Divider />
-
-                {isStaffLoading ? (
-                  <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-                    <CircularProgress />
-                  </Box>
-                ) : (
-                  <List disablePadding>
-                    {staffUsers.map((staff) => (
-                      <ListItemButton
-                        key={staff.id}
-                        divider
-                        onClick={() => navigate(`/profile?userId=${staff.id}`)}
-                        sx={{ borderRadius: 2 }}
-                      >
-                        <ListItemText
-                          primary={staff.name}
-                          secondary={
-                            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mt: 0.5 }}>
-                              <Typography variant="body2" color="text.secondary">
-                                {staff.email}
-                              </Typography>
-                              <Chip size="small" label={String(staff.role)} />
-                              <Chip
-                                size="small"
-                                color={staff.isActive ? 'success' : 'default'}
-                                label={staff.isActive ? 'Active' : 'Inactive'}
-                              />
-                            </Stack>
-                          }
-                        />
-                      </ListItemButton>
-                    ))}
-
-                    {staffUsers.length === 0 ? (
-                      <Box sx={{ py: 3 }}>
-                        <Typography color="text.secondary">No staff accounts found.</Typography>
-                      </Box>
-                    ) : null}
-                  </List>
-                )}
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Card sx={{ borderRadius: 4, boxShadow: 4 }}>
-            <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
-              <Stack spacing={2.5}>
-                <Typography variant="h6" fontWeight={700}>
-                  Appoint New Staff
-                </Typography>
-
-                <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate>
-                  <Stack spacing={2.5}>
-                    <TextField
-                      fullWidth
-                      label="Name"
-                      autoComplete="name"
-                      error={Boolean(errors.name)}
-                      helperText={errors.name?.message ?? 'Enter staff full name.'}
-                      {...register('name', {
-                        required: 'Name is required.',
-                        minLength: { value: 2, message: 'Name must be at least 2 characters.' },
-                        maxLength: { value: 100, message: 'Name must be at most 100 characters.' },
-                      })}
-                    />
-
-                    <TextField
-                      fullWidth
-                      label="Email"
-                      type="email"
-                      autoComplete="email"
-                      error={Boolean(errors.email)}
-                      helperText={errors.email?.message ?? 'Use a valid email address.'}
-                      {...register('email', {
-                        required: 'Email is required.',
-                        pattern: {
-                          value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                          message: 'Enter a valid email address.',
-                        },
-                      })}
-                    />
-
-                    <TextField
-                      fullWidth
-                      label="Password"
-                      type="password"
-                      autoComplete="new-password"
-                      error={Boolean(errors.password)}
-                      helperText={errors.password?.message ?? 'At least 8 characters.'}
-                      {...register('password', {
-                        required: 'Password is required.',
-                        minLength: { value: 8, message: 'Password must be at least 8 characters.' },
-                        maxLength: { value: 100, message: 'Password must be at most 100 characters.' },
-                      })}
-                    />
-
-                    <FormControl fullWidth error={Boolean(errors.role)}>
-                      <InputLabel id="staff-role-label">Role</InputLabel>
-                      <Select
-                        labelId="staff-role-label"
-                        label="Role"
-                        value={selectedRole}
-                        onChange={(event) => setValue('role', event.target.value as StaffRole, { shouldValidate: true })}
-                      >
-                        <MenuItem value="Admin">Admin</MenuItem>
-                        <MenuItem value="InventoryManager">InventoryManager</MenuItem>
-                        <MenuItem value="Cashier">Cashier</MenuItem>
-                      </Select>
-                    </FormControl>
-
-                    <Button
-                      type="submit"
-                      variant="contained"
-                      size="large"
-                      fullWidth
-                      disabled={isSubmitting || !isValid}
-                      sx={{ py: 1.4, borderRadius: 999 }}
-                    >
-                      {isSubmitting ? <CircularProgress size={24} color="inherit" /> : 'Create Staff User'}
-                    </Button>
-                  </Stack>
-                </Box>
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+      {/* Slide-in Drawer for adding staff */}
+      <Drawer anchor="right" open={drawerOpen} onClose={() => setDrawerOpen(false)} PaperProps={{ sx: { width: { xs: '100%', sm: 400 } } }}>
+        <Box p={3} display="flex" justifyContent="space-between" alignItems="center" bgcolor="primary.main" color="white">
+          <Typography variant="h6" fontWeight="bold">Appoint New Staff</Typography>
+          <IconButton color="inherit" onClick={() => setDrawerOpen(false)}><Close /></IconButton>
+        </Box>
+        <Box p={3} component="form" onSubmit={handleSubmit(onSubmit)} noValidate>
+          <Stack spacing={3}>
+            <TextField fullWidth label="Full Name" error={!!errors.name} helperText={errors.name?.message} {...register('name', { required: 'Name required', minLength: 2 })} />
+            <TextField fullWidth label="Email Address" type="email" error={!!errors.email} helperText={errors.email?.message} {...register('email', { required: 'Email required', pattern: { value: /^\S+@\S+\.\S+$/, message: 'Invalid email' } })} />
+            <TextField fullWidth label="Password" type="password" error={!!errors.password} helperText={errors.password?.message} {...register('password', { required: 'Password required', minLength: 8 })} />
+            <FormControl fullWidth error={!!errors.role}>
+              <InputLabel>Role</InputLabel>
+              <Select label="Role" value={selectedRole} onChange={(e) => setValue('role', e.target.value as StaffRole, { shouldValidate: true })}>
+                <MenuItem value="Admin">Admin</MenuItem>
+                <MenuItem value="InventoryManager">Inventory Manager</MenuItem>
+                <MenuItem value="Cashier">Cashier</MenuItem>
+              </Select>
+            </FormControl>
+            <Button type="submit" variant="contained" size="large" fullWidth disabled={isSubmitting || !isValid}>
+              {isSubmitting ? <CircularProgress size={24} color="inherit" /> : 'Create Staff User'}
+            </Button>
+          </Stack>
+        </Box>
+      </Drawer>
     </Stack>
   );
 }

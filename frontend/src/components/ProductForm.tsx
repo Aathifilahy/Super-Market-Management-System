@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box,
-  TextField,
-  Button,
-  Paper,
-  Typography,
-  Grid,
-  Alert,
+  Box, TextField, Button, Typography, Grid, Dialog, DialogTitle, DialogContent, DialogActions, Slide, CircularProgress, IconButton
 } from '@mui/material';
+import { Close as CloseIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { TransitionProps } from '@mui/material/transitions';
 import { CreateProductDto, UpdateProductDto } from '../types/Product';
 import { useAuth } from '../hooks/useAuth';
 import { isAdminOrInventoryRole } from '../utils/role';
+
+const Transition = React.forwardRef(function Transition(
+  props: TransitionProps & { children: React.ReactElement<any, any> },
+  ref: React.Ref<unknown>,
+) {
+  return <Slide direction="up" ref={ref} {...props} />;
+});
 
 interface ProductFormProps {
   initialData?: UpdateProductDto;
@@ -22,19 +25,14 @@ interface ProductFormProps {
 const ProductForm: React.FC<ProductFormProps> = ({ initialData, onSubmit, title }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
-
   const isAdminOrInventory = isAdminOrInventoryRole(user?.role);
   const afterSavePath = isAdminOrInventory ? '/admin/products' : '/shop';
+
+  const [open, setOpen] = useState(true);
   const [formData, setFormData] = useState<CreateProductDto>({
-    name: '',
-    category: '',
-    price: 0,
-    quantity: 0,
-    expiryDate: '',
-    imageUrl: '',
+    name: '', category: '', price: 0, quantity: 0, expiryDate: '', imageUrl: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -44,37 +42,25 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData, onSubmit, title 
         category: initialData.category || '',
         price: initialData.price || 0,
         quantity: initialData.quantity || 0,
-        expiryDate: initialData.expiryDate || '',
+        expiryDate: initialData.expiryDate ? new Date(initialData.expiryDate).toISOString().split('T')[0] : '',
         imageUrl: initialData.imageUrl || '',
       });
     }
   }, [initialData]);
 
+  const handleClose = () => {
+    setOpen(false);
+    setTimeout(() => navigate(afterSavePath), 300);
+  };
+
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
-
-    if (!formData.name.trim()) {
-      newErrors.name = 'Name is required';
-    } else if (formData.name.length < 2) {
-      newErrors.name = 'Name must be at least 2 characters';
-    }
-
-    if (!formData.category.trim()) {
-      newErrors.category = 'Category is required';
-    }
-
-    if (!formData.price || formData.price <= 0) {
-      newErrors.price = 'Price must be greater than 0';
-    }
-
-    if (formData.quantity < 0) {
-      newErrors.quantity = 'Quantity cannot be negative';
-    }
-
-    if (!formData.expiryDate) {
-      newErrors.expiryDate = 'Expiry date is required';
-    }
-
+    if (!formData.name.trim()) newErrors.name = 'Name is required';
+    if (!formData.category.trim()) newErrors.category = 'Category is required';
+    if (formData.price <= 0) newErrors.price = 'Price must be greater than 0';
+    if (formData.quantity < 0) newErrors.quantity = 'Quantity cannot be negative';
+    if (!formData.expiryDate) newErrors.expiryDate = 'Expiry date is required';
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -85,153 +71,75 @@ const ProductForm: React.FC<ProductFormProps> = ({ initialData, onSubmit, title 
       ...prev,
       [name]: name === 'price' || name === 'quantity' ? Number(value) : value,
     }));
-    // Clear error for this field
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: '' }));
-    }
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!validate()) {
-      return;
-    }
+    if (!validate()) return;
 
     setSubmitting(true);
-    setSubmitError(null);
-
     try {
-      const dataToSubmit = {
-        ...formData,
-        imageUrl: formData.imageUrl?.trim() || undefined,
-      };
+      const dataToSubmit = { ...formData, imageUrl: formData.imageUrl?.trim() || undefined };
       await onSubmit(dataToSubmit);
-      navigate(afterSavePath, { replace: true });
+      handleClose();
     } catch (err) {
-      setSubmitError('Failed to save product. Please try again.');
-      console.error(err);
+      setErrors({ submit: 'Failed to save product. Please try again.' });
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <Box p={3}>
-      <Paper sx={{ p: 4, maxWidth: 600, mx: 'auto' }}>
-        <Typography variant="h4" gutterBottom>
-          {title}
-        </Typography>
-
-        {submitError && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {submitError}
-          </Alert>
-        )}
-
-        <form onSubmit={handleSubmit}>
-          <Grid container spacing={2}>
-            <Grid size={12}>
-              <TextField
-                fullWidth
-                label="Product Name"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                error={!!errors.name}
-                helperText={errors.name}
-                required
-              />
+    <Dialog 
+      open={open} 
+      onClose={handleClose}
+      TransitionComponent={Transition}
+      maxWidth="sm" 
+      fullWidth
+      PaperProps={{ sx: { borderRadius: 4, p: 1 } }}
+    >
+      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+        <Typography variant="h5" fontWeight="bold">{title}</Typography>
+        <IconButton onClick={handleClose} size="small"><CloseIcon /></IconButton>
+      </DialogTitle>
+      
+      <form onSubmit={handleSubmit}>
+        <DialogContent dividers sx={{ border: 'none', py: 2 }}>
+          <Grid container spacing={3}>
+            {errors.submit && (
+               <Grid item xs={12}>
+                 <Typography color="error" variant="body2" fontWeight="bold">{errors.submit}</Typography>
+               </Grid>
+            )}
+            <Grid item xs={12}>
+              <TextField fullWidth label="Product Name" name="name" value={formData.name} onChange={handleChange} error={!!errors.name} helperText={errors.name} required />
             </Grid>
-
-            <Grid size={12}>
-              <TextField
-                fullWidth
-                label="Category"
-                name="category"
-                value={formData.category}
-                onChange={handleChange}
-                error={!!errors.category}
-                helperText={errors.category}
-                required
-              />
+            <Grid item xs={12}>
+              <TextField fullWidth label="Category" name="category" value={formData.category} onChange={handleChange} error={!!errors.category} helperText={errors.category} required />
             </Grid>
-
-            <Grid size={6}>
-              <TextField
-                fullWidth
-                label="Price"
-                name="price"
-                type="number"
-                inputProps={{ step: '0.01', min: '0' }}
-                value={formData.price}
-                onChange={handleChange}
-                error={!!errors.price}
-                helperText={errors.price}
-                required
-              />
+            <Grid item xs={6}>
+              <TextField fullWidth label="Price" name="price" type="number" inputProps={{ step: '0.01', min: '0' }} value={formData.price} onChange={handleChange} error={!!errors.price} helperText={errors.price} required />
             </Grid>
-
-            <Grid size={6}>
-              <TextField
-                fullWidth
-                label="Quantity"
-                name="quantity"
-                type="number"
-                inputProps={{ min: '0' }}
-                value={formData.quantity}
-                onChange={handleChange}
-                error={!!errors.quantity}
-                helperText={errors.quantity}
-                required
-              />
+            <Grid item xs={6}>
+              <TextField fullWidth label="Quantity" name="quantity" type="number" inputProps={{ min: '0' }} value={formData.quantity} onChange={handleChange} error={!!errors.quantity} helperText={errors.quantity} required />
             </Grid>
-
-            <Grid size={12}>
-              <TextField
-                fullWidth
-                label="Expiry Date"
-                name="expiryDate"
-                type="date"
-                value={formData.expiryDate}
-                onChange={handleChange}
-                error={!!errors.expiryDate}
-                helperText={errors.expiryDate}
-                InputLabelProps={{ shrink: true }}
-                required
-              />
+            <Grid item xs={12}>
+              <TextField fullWidth label="Expiry Date" name="expiryDate" type="date" value={formData.expiryDate} onChange={handleChange} error={!!errors.expiryDate} helperText={errors.expiryDate} InputLabelProps={{ shrink: true }} required />
             </Grid>
-
-            <Grid size={12}>
-              <TextField
-                fullWidth
-                label="Image URL (optional)"
-                name="imageUrl"
-                value={formData.imageUrl}
-                onChange={handleChange}
-                placeholder="https://example.com/image.jpg"
-              />
-            </Grid>
-
-            <Grid size={12}>
-              <Box display="flex" gap={2} justifyContent="flex-end">
-                <Button variant="outlined" onClick={() => navigate(afterSavePath)}>
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  variant="contained"
-                  color="primary"
-                  disabled={submitting}
-                >
-                  {submitting ? 'Saving...' : 'Save Product'}
-                </Button>
-              </Box>
+            <Grid item xs={12}>
+              <TextField fullWidth label="Image URL (optional)" name="imageUrl" value={formData.imageUrl} onChange={handleChange} placeholder="https://example.com/image.jpg" />
             </Grid>
           </Grid>
-        </form>
-      </Paper>
-    </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button variant="outlined" onClick={handleClose} disabled={submitting} sx={{ borderRadius: 2, px: 3 }}>Cancel</Button>
+          <Button type="submit" variant="contained" color="primary" disabled={submitting} sx={{ borderRadius: 2, px: 4 }} startIcon={submitting ? <CircularProgress size={20} color="inherit" /> : null}>
+            {submitting ? 'Saving...' : 'Save Product'}
+          </Button>
+        </DialogActions>
+      </form>
+    </Dialog>
   );
 };
 
