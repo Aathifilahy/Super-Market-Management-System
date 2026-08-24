@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using MySqlConnector;
 using SupermarketAPI.Data;
 using SupermarketAPI.Interfaces;
 using SupermarketAPI.Repositories;
@@ -32,18 +31,16 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Connection string is read from:
-// - Azure App Service: ConnectionStrings__DefaultConnection environment variable
-// - Local development: appsettings.json / appsettings.Development.json
+// MongoDB settings are read from environment variables in Render or appsettings locally.
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    var connectionString = builder.Configuration.GetConnectionString("MongoDb")
         ?? throw new InvalidOperationException(
-            "DefaultConnection connection string was not found. " +
-            "Set the 'ConnectionStrings__DefaultConnection' environment variable in Azure App Service, " +
-            "or define it in appsettings.json for local development.");
+            "MongoDB connection string was not found. Set ConnectionStrings__MongoDb.");
+    var databaseName = builder.Configuration["MongoDb:DatabaseName"]
+        ?? throw new InvalidOperationException("MongoDb:DatabaseName was not found.");
 
-    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
+    options.UseMongoDB(connectionString, databaseName);
 });
 
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
@@ -133,38 +130,6 @@ var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
-    using var scope = app.Services.CreateScope();
-    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    var startupLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-    var autoMigrateOnStartup = builder.Configuration.GetValue<bool>("AutoMigrateOnStartup");
-
-    try
-    {
-        if (!dbContext.Database.CanConnect())
-        {
-            startupLogger.LogError("Database connection check failed. Verify MySQL host, port, user, password, and authentication plugin settings.");
-        }
-
-        if (autoMigrateOnStartup)
-        {
-            dbContext.Database.Migrate();
-            startupLogger.LogInformation("Database migrations applied successfully.");
-        }
-        else
-        {
-            startupLogger.LogInformation("Skipping automatic migrations in Development. Set AutoMigrateOnStartup=true to enable.");
-        }
-    }
-    catch (MySqlException ex)
-    {
-        startupLogger.LogError(ex,
-            "MySQL connection failed. Ensure user 'root' can authenticate with caching_sha2_password and connection string options include SslMode=None and AllowPublicKeyRetrieval=True.");
-    }
-    catch (Exception ex)
-    {
-        startupLogger.LogError(ex, "Database migration failed during startup.");
-    }
-
     app.UseSwagger();
     app.UseSwaggerUI(options =>
     {
@@ -172,25 +137,6 @@ if (app.Environment.IsDevelopment())
         options.SwaggerEndpoint("/swagger/v1/swagger.json", "Supermarket Management API v1");
         options.DefaultModelsExpandDepth(-1);
     });
-}
-
-if (app.Environment.IsProduction())
-{
-    using var scope = app.Services.CreateScope();
-    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    var startupLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-
-    try
-    {
-        startupLogger.LogInformation("Production environment detected. Applying EF Core migrations...");
-        dbContext.Database.Migrate();
-        startupLogger.LogInformation("EF Core migrations applied successfully.");
-    }
-    catch (Exception ex)
-    {
-        startupLogger.LogError(ex, "An error occurred while applying EF Core migrations on startup.");
-        throw;
-    }
 }
 
 using (var scope = app.Services.CreateScope())

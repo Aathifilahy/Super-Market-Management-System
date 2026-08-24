@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: supermarket-api
+    runtime: docker
+    dockerfilePath: ./SupermarketAPI/Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ConnectionStrings__MongoDb
+        sync: false
+      - key: MongoDb__DatabaseName
+        value: SupermarketDB
+      - key: Jwt__Key
+        generateValue: true
+      - key: FRONTEND_URLS
+        sync: false
+      - key: Supervisor__Email
+        sync: false
+      - key: Supervisor__Password
+        sync: false
+      - key: Supervisor__Name
+        value: Default Supervisor

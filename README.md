@@ -6,7 +6,7 @@ It includes:
 
 - ASP.NET Core Web API backend
 - React + TypeScript frontend
-- MySQL database
+- MongoDB database
 - JWT authentication and authorization
 - Selenium smoke test for product flow
 
@@ -74,7 +74,7 @@ Frontend URL in development:
 ### Backend
 
 - ASP.NET Core (net10.0)
-- Entity Framework Core + Pomelo MySQL provider
+- Entity Framework Core + MongoDB provider
 - AutoMapper
 - JWT Bearer authentication
 - BCrypt for password hashing
@@ -90,7 +90,7 @@ Frontend URL in development:
 
 ### Database
 
-- MySQL
+- MongoDB
 
 ## Project Structure
 
@@ -115,7 +115,7 @@ Super-Market-Management-System/
 
 - .NET SDK 10
 - Node.js LTS and npm
-- MySQL server running locally
+- MongoDB server or MongoDB Atlas cluster
 - Google Chrome (for Selenium test)
 
 ## Configuration
@@ -134,7 +134,7 @@ Key sections:
 
 Important:
 
-- Use your local MySQL credentials in DefaultConnection.
+- Use your MongoDB connection string in `ConnectionStrings:MongoDb`.
 - Replace Jwt:Key with a strong random secret of at least 32 characters.
 
 ### Backend launch URL
@@ -188,7 +188,7 @@ npm test
 
 ## Database Notes
 
-The application uses EF Core and also includes features that were introduced with manual MySQL setup during development.
+The application uses EF Core with MongoDB. MongoDB creates collections when the application first writes data; EF migrations are no longer used.
 
 Ensure the database contains required tables:
 
@@ -276,9 +276,8 @@ Suggested verification flow:
 
 ### Backend cannot connect to database
 
-- Verify MySQL is running on localhost:3306
-- Verify username/password in appsettings.json
-- Verify database name in connection string
+- Verify the MongoDB connection string is valid
+- Verify the MongoDB database name is correct
 
 ### 401 Unauthorized on protected endpoints
 
@@ -303,10 +302,24 @@ Suggested verification flow:
 - Move JWT key and database credentials to environment variables or secret manager for production.
 - Use HTTPS and secure cookie/token strategies in production environments.
 
-### Dev note: create an Admin user (local)
+## Render and MongoDB Deployment
+
+The `render.yaml` blueprint deploys the ASP.NET Core API from `SupermarketAPI/Dockerfile`.
+Create a MongoDB Atlas database, then create the Render service from the blueprint and set:
+
+- `ConnectionStrings__MongoDb` to the Atlas connection string
+- `MongoDb__DatabaseName` to the target database name
+- `FRONTEND_URLS` to the deployed frontend origin
+- `Supervisor__Email` and `Supervisor__Password` to the initial administrator credentials
+
+After Render creates the service, set `REACT_APP_API_BASE_URL` in the frontend build environment
+to `https://<render-service>.onrender.com/api`. The frontend currently uses its Azure URL only
+when this variable is not supplied, so it must be set for the Render deployment.
+
+### Dev note: create an Admin user
 
 Sprint 2 customer registration always creates a Customer account. For local testing of inventory actions,
-promote a user to Admin directly in MySQL.
+promote a user to Admin directly in MongoDB.
 
 In the Users table the Role is stored as an integer enum:
 
