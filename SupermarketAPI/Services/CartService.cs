@@ -111,7 +111,6 @@ public class CartService : ICartService
                 ?? throw new KeyNotFoundException("Active cart not found.");
 
             var cartItem = await _dbContext.CartItems
-                .Include(ci => ci.Product)
                 .FirstOrDefaultAsync(ci => ci.Id == cartItemId && ci.CartId == cart.Id);
 
             if (cartItem is null)
@@ -130,8 +129,7 @@ public class CartService : ICartService
             }
             else
             {
-                var product = cartItem.Product
-                    ?? await _dbContext.Products.FirstOrDefaultAsync(p => p.Id == cartItem.ProductId)
+                var product = await _dbContext.Products.FirstOrDefaultAsync(p => p.Id == cartItem.ProductId)
                     ?? throw new KeyNotFoundException("Product not found.");
 
                 if (dto.Quantity > product.Quantity)
@@ -229,9 +227,17 @@ public class CartService : ICartService
 
     private async Task<Cart?> GetActiveCart(int userId)
     {
-        return await _dbContext.Carts
-            .Include(c => c.Items)
+        var cart = await _dbContext.Carts
             .FirstOrDefaultAsync(c => c.UserId == userId && c.IsActive);
+
+        if (cart is not null)
+        {
+            cart.Items = await _dbContext.CartItems
+                .Where(ci => ci.CartId == cart.Id)
+                .ToListAsync();
+        }
+
+        return cart;
     }
 
     private async Task<Cart> GetOrCreateActiveCart(int userId)
@@ -262,18 +268,34 @@ public class CartService : ICartService
     {
         var cart = await _dbContext.Carts
             .AsNoTracking()
-            .Include(c => c.Items)
-                .ThenInclude(ci => ci.Product)
             .FirstOrDefaultAsync(c => c.Id == cartId)
             ?? throw new KeyNotFoundException("Cart not found.");
 
-        var items = cart.Items
+        var cartItems = await _dbContext.CartItems
+            .AsNoTracking()
+            .Where(ci => ci.CartId == cartId)
+            .ToListAsync();
+
+        var products = new Dictionary<int, Product>();
+        foreach (var productId in cartItems.Select(ci => ci.ProductId).Distinct())
+        {
+            var product = await _dbContext.Products
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.Id == productId);
+
+            if (product is not null)
+            {
+                products[productId] = product;
+            }
+        }
+
+        var items = cartItems
             .OrderByDescending(ci => ci.AddedAt)
             .Select(ci => new CartItemDto
             {
                 Id = ci.Id,
                 ProductId = ci.ProductId,
-                ProductName = ci.Product?.Name ?? string.Empty,
+                ProductName = products.TryGetValue(ci.ProductId, out var product) ? product.Name : string.Empty,
                 Quantity = ci.Quantity,
                 Price = ci.Price,
                 LineTotal = ci.Quantity * ci.Price,
