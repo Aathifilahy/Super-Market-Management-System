@@ -61,6 +61,12 @@ public class AuthController : ControllerBase
                 IsActive = true
             };
 
+            var lastUser = await _dbContext.Users
+                .AsNoTracking()
+                .OrderByDescending(u => u.Id)
+                .FirstOrDefaultAsync();
+            user.Id = (lastUser?.Id ?? 0) + 1;
+
             _dbContext.Users.Add(user);
             await _dbContext.SaveChangesAsync();
 
