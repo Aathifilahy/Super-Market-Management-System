@@ -85,12 +85,7 @@ public class ProductRepository : IProductRepository
     {
         try
         {
-            var lastProduct = await _context.Products
-                .AsNoTracking()
-                .OrderByDescending(p => p.Id)
-                .FirstOrDefaultAsync();
-
-            product.Id = (lastProduct?.Id ?? 0) + 1;
+            product.Id = await MongoIdGenerator.NextAsync(_context.Products, p => p.Id);
             await _context.Products.AddAsync(product);
             await _context.SaveChangesAsync();
             return product;

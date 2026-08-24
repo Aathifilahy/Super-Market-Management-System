@@ -72,6 +72,8 @@ public class StockPurchasesController : ControllerBase
                 CreatedByUserId = GetCurrentUserId()
             };
 
+            purchase.Id = await MongoIdGenerator.NextAsync(_dbContext.StockPurchases, sp => sp.Id);
+
             _dbContext.StockPurchases.Add(purchase);
 
             product.Quantity += dto.Quantity;

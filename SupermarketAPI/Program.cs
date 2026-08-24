@@ -160,7 +160,7 @@ using (var scope = app.Services.CreateScope())
 
             if (supervisorUser is null)
             {
-                dbContext.Users.Add(new User
+                var seededSupervisor = new User
                 {
                     Name = string.IsNullOrWhiteSpace(supervisorName) ? "Default Supervisor" : supervisorName,
                     Email = supervisorEmail,
@@ -168,7 +168,9 @@ using (var scope = app.Services.CreateScope())
                     Role = UserRole.Admin,
                     CreatedAt = DateTime.UtcNow,
                     IsActive = true
-                });
+                };
+                seededSupervisor.Id = await MongoIdGenerator.NextAsync(dbContext.Users, u => u.Id);
+                dbContext.Users.Add(seededSupervisor);
 
                 await dbContext.SaveChangesAsync();
                 startupLogger.LogInformation("Supervisor user seeded successfully for {SupervisorEmail}.", supervisorEmail);

@@ -61,6 +61,8 @@ public class AuthController : ControllerBase
                 IsActive = true
             };
 
+            user.Id = await MongoIdGenerator.NextAsync(_dbContext.Users, u => u.Id);
+
             _dbContext.Users.Add(user);
             await _dbContext.SaveChangesAsync();
 

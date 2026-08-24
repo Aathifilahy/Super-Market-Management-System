@@ -68,6 +68,13 @@ public class OrderService : IOrderService
                 }).ToList()
             };
 
+            order.Id = await MongoIdGenerator.NextAsync(_dbContext.Orders, o => o.Id);
+            var nextOrderItemId = await MongoIdGenerator.NextAsync(_dbContext.OrderItems, oi => oi.Id);
+            foreach (var (item, index) in order.Items.Select((item, index) => (item, index)))
+            {
+                item.Id = nextOrderItemId + index;
+            }
+
             _dbContext.Orders.Add(order);
 
             foreach (var item in cart.Items)

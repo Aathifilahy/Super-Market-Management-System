@@ -116,6 +116,8 @@ public class SuppliersController : ControllerBase
                 CreatedAt = DateTime.UtcNow
             };
 
+            supplier.Id = await MongoIdGenerator.NextAsync(_dbContext.Suppliers, s => s.Id);
+
             _dbContext.Suppliers.Add(supplier);
             await _dbContext.SaveChangesAsync();
 
