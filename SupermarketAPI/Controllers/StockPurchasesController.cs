@@ -118,8 +118,6 @@ public class StockPurchasesController : ControllerBase
         {
             var query = _dbContext.StockPurchases
                 .AsNoTracking()
-                .Include(sp => sp.Supplier)
-                .Include(sp => sp.Product)
                 .AsQueryable();
 
             if (supplierId.HasValue)
@@ -135,23 +133,35 @@ public class StockPurchasesController : ControllerBase
             var purchases = await query
                 .OrderByDescending(sp => sp.PurchaseDate)
                 .ThenByDescending(sp => sp.Id)
-                .Select(sp => new StockPurchaseResponseDto
-                {
-                    Id = sp.Id,
-                    SupplierId = sp.SupplierId,
-                    SupplierCompanyName = sp.Supplier != null ? sp.Supplier.CompanyName : string.Empty,
-                    ProductId = sp.ProductId,
-                    ProductName = sp.Product != null ? sp.Product.Name : string.Empty,
-                    Quantity = sp.Quantity,
-                    PurchasePrice = sp.PurchasePrice,
-                    PurchaseDate = sp.PurchaseDate,
-                    ExpiryDate = sp.Product != null ? sp.Product.ExpiryDate : default,
-                    CreatedAt = sp.CreatedAt,
-                    TotalCost = sp.Quantity * sp.PurchasePrice
-                })
                 .ToListAsync();
 
-            return Ok(purchases);
+            var responses = new List<StockPurchaseResponseDto>();
+            foreach (var purchase in purchases)
+            {
+                var supplier = await _dbContext.Suppliers
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(s => s.Id == purchase.SupplierId);
+                var product = await _dbContext.Products
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.Id == purchase.ProductId);
+
+                responses.Add(new StockPurchaseResponseDto
+                {
+                    Id = purchase.Id,
+                    SupplierId = purchase.SupplierId,
+                    SupplierCompanyName = supplier?.CompanyName ?? string.Empty,
+                    ProductId = purchase.ProductId,
+                    ProductName = product?.Name ?? string.Empty,
+                    Quantity = purchase.Quantity,
+                    PurchasePrice = purchase.PurchasePrice,
+                    PurchaseDate = purchase.PurchaseDate,
+                    ExpiryDate = product?.ExpiryDate ?? default,
+                    CreatedAt = purchase.CreatedAt,
+                    TotalCost = purchase.Quantity * purchase.PurchasePrice
+                });
+            }
+
+            return Ok(responses);
         }
         catch (Exception ex)
         {
@@ -170,8 +180,6 @@ public class StockPurchasesController : ControllerBase
         {
             var purchase = await _dbContext.StockPurchases
                 .AsNoTracking()
-                .Include(sp => sp.Supplier)
-                .Include(sp => sp.Product)
                 .FirstOrDefaultAsync(sp => sp.Id == id);
 
             if (purchase is null)
@@ -179,17 +187,24 @@ public class StockPurchasesController : ControllerBase
                 return NotFound(new { message = "Stock purchase not found." });
             }
 
+            var supplier = await _dbContext.Suppliers
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Id == purchase.SupplierId);
+            var product = await _dbContext.Products
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.Id == purchase.ProductId);
+
             var response = new StockPurchaseResponseDto
             {
                 Id = purchase.Id,
                 SupplierId = purchase.SupplierId,
-                SupplierCompanyName = purchase.Supplier != null ? purchase.Supplier.CompanyName : string.Empty,
+                SupplierCompanyName = supplier?.CompanyName ?? string.Empty,
                 ProductId = purchase.ProductId,
-                ProductName = purchase.Product != null ? purchase.Product.Name : string.Empty,
+                ProductName = product?.Name ?? string.Empty,
                 Quantity = purchase.Quantity,
                 PurchasePrice = purchase.PurchasePrice,
                 PurchaseDate = purchase.PurchaseDate,
-                ExpiryDate = purchase.Product != null ? purchase.Product.ExpiryDate : default,
+                ExpiryDate = product?.ExpiryDate ?? default,
                 CreatedAt = purchase.CreatedAt,
                 TotalCost = purchase.Quantity * purchase.PurchasePrice
             };

@@ -24,10 +24,12 @@ public class OrderService : IOrderService
             await EnsureActiveUserExists(userId);
 
             var cart = await _dbContext.Carts
-                .Include(c => c.Items)
-                .ThenInclude(ci => ci.Product)
                 .FirstOrDefaultAsync(c => c.UserId == userId && c.IsActive)
                 ?? throw new KeyNotFoundException("Active cart not found.");
+
+            cart.Items = await _dbContext.CartItems
+                .Where(ci => ci.CartId == cart.Id)
+                .ToListAsync();
 
             if (cart.Items.Count == 0)
             {
@@ -36,9 +38,10 @@ public class OrderService : IOrderService
 
             foreach (var item in cart.Items)
             {
-                var product = item.Product
-                    ?? await _dbContext.Products.FirstOrDefaultAsync(p => p.Id == item.ProductId)
+                var product = await _dbContext.Products.FirstOrDefaultAsync(p => p.Id == item.ProductId)
                     ?? throw new KeyNotFoundException($"Product {item.ProductId} not found.");
+
+                item.Product = product;
 
                 if (item.Quantity > product.Quantity)
                 {
@@ -60,6 +63,7 @@ public class OrderService : IOrderService
                 CreatedAt = DateTime.UtcNow,
                 Items = cart.Items.Select(item => new OrderItem
                 {
+                    OrderId = 0,
                     ProductId = item.ProductId,
                     Quantity = item.Quantity,
                     Price = item.Price,
@@ -72,6 +76,7 @@ public class OrderService : IOrderService
             var nextOrderItemId = await MongoIdGenerator.NextAsync(_dbContext.OrderItems, oi => oi.Id);
             foreach (var (item, index) in order.Items.Select((item, index) => (item, index)))
             {
+                item.OrderId = order.Id;
                 item.Id = nextOrderItemId + index;
             }
 
@@ -79,8 +84,7 @@ public class OrderService : IOrderService
 
             foreach (var item in cart.Items)
             {
-                var product = item.Product
-                    ?? await _dbContext.Products.FirstAsync(p => p.Id == item.ProductId);
+                var product = await _dbContext.Products.FirstAsync(p => p.Id == item.ProductId);
 
                 product.Quantity -= item.Quantity;
                 product.UpdatedAt = DateTime.UtcNow;
@@ -107,21 +111,33 @@ public class OrderService : IOrderService
         {
             await EnsureActiveUserExists(userId);
 
-            return await _dbContext.Orders
+            var orders = await _dbContext.Orders
                 .AsNoTracking()
                 .Where(o => o.UserId == userId)
                 .OrderByDescending(o => o.OrderDate)
-                .Select(o => new OrderDto
-                {
-                    Id = o.Id,
-                    OrderDate = o.OrderDate,
-                    TotalAmount = o.TotalAmount,
-                    Status = o.Status.ToString(),
-                    PaymentMethod = o.PaymentMethod,
-                    PaymentStatus = o.PaymentStatus.ToString(),
-                    TotalItems = o.Items.Sum(i => i.Quantity)
-                })
                 .ToListAsync();
+
+            var orderDtos = new List<OrderDto>();
+            foreach (var order in orders)
+            {
+                var items = await _dbContext.OrderItems
+                    .AsNoTracking()
+                    .Where(item => item.OrderId == order.Id)
+                    .ToListAsync();
+
+                orderDtos.Add(new OrderDto
+                {
+                    Id = order.Id,
+                    OrderDate = order.OrderDate,
+                    TotalAmount = order.TotalAmount,
+                    Status = order.Status.ToString(),
+                    PaymentMethod = order.PaymentMethod,
+                    PaymentStatus = order.PaymentStatus.ToString(),
+                    TotalItems = items.Sum(item => item.Quantity)
+                });
+            }
+
+            return orderDtos;
         }
         catch (Exception ex) when (ex is not KeyNotFoundException)
         {
@@ -138,9 +154,13 @@ public class OrderService : IOrderService
 
             var order = await _dbContext.Orders
                 .AsNoTracking()
-                .Include(o => o.Items)
                 .FirstOrDefaultAsync(o => o.Id == orderId && o.UserId == userId)
                 ?? throw new KeyNotFoundException("Order not found.");
+
+            var orderItems = await _dbContext.OrderItems
+                .AsNoTracking()
+                .Where(item => item.OrderId == order.Id)
+                .ToListAsync();
 
             return new OrderDetailDto
             {
@@ -153,7 +173,7 @@ public class OrderService : IOrderService
                 PaymentMethod = order.PaymentMethod,
                 PaymentStatus = order.PaymentStatus.ToString(),
                 CreatedAt = order.CreatedAt,
-                Items = order.Items
+                Items = orderItems
                     .Select(item => new OrderItemDto
                     {
                         Id = item.Id,
