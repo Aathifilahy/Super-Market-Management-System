@@ -63,8 +63,6 @@ public class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<Supplier>(entity =>
         {
-            entity.ToTable("Suppliers");
-
             entity.HasKey(s => s.Id);
 
             entity.Property(s => s.CompanyName)
@@ -100,8 +98,6 @@ public class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<StockPurchase>(entity =>
         {
-            entity.ToTable("StockPurchases");
-
             entity.HasKey(sp => sp.Id);
 
             entity.Property(sp => sp.Quantity)
@@ -134,8 +130,6 @@ public class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<User>(entity =>
         {
-            entity.ToTable("Users");
-
             entity.HasKey(u => u.Id);
 
             entity.Property(u => u.Name)
@@ -170,8 +164,6 @@ public class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<Cart>(entity =>
         {
-            entity.ToTable("Cart");
-
             entity.HasKey(c => c.Id);
 
             entity.Property(c => c.CreatedAt)
@@ -190,8 +182,6 @@ public class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<CartItem>(entity =>
         {
-            entity.ToTable("CartItems");
-
             entity.HasKey(ci => ci.Id);
 
             entity.Property(ci => ci.Quantity)
@@ -215,8 +205,6 @@ public class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<Order>(entity =>
         {
-            entity.ToTable("Orders");
-
             entity.HasKey(o => o.Id);
 
             entity.Property(o => o.OrderDate)
@@ -259,8 +247,6 @@ public class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<OrderItem>(entity =>
         {
-            entity.ToTable("OrderItems");
-
             entity.HasKey(oi => oi.Id);
 
             entity.Property(oi => oi.Quantity)

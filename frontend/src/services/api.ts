@@ -3,7 +3,7 @@ import { Product, CreateProductDto, UpdateProductDto } from '../types/Product';
 
 const configuredApiBaseUrl = process.env.REACT_APP_API_BASE_URL?.trim();
 const DEFAULT_DEV_API_BASE_URL = 'http://localhost:5224/api';
-const DEFAULT_PROD_API_BASE_URL = 'https://smmsbackend-bgdxbqh7eqd6hgc6.eastasia-01.azurewebsites.net/api';
+const DEFAULT_PROD_API_BASE_URL = '';
 const API_BASE_URL =
   configuredApiBaseUrl ||
   (process.env.NODE_ENV === 'development'
@@ -12,7 +12,7 @@ const API_BASE_URL =
 
 if (!configuredApiBaseUrl && process.env.NODE_ENV === 'production') {
   console.warn(
-    `REACT_APP_API_BASE_URL is not set. Falling back to ${DEFAULT_PROD_API_BASE_URL}.`
+    'REACT_APP_API_BASE_URL is not set. Configure it with the deployed Render API URL.'
   );
 }
 
