@@ -49,10 +49,9 @@ public class AdminController : ControllerBase
 
             var users = await query
                 .OrderBy(u => u.Name)
-                .Select(u => ToUserResponse(u))
                 .ToListAsync();
 
-            return Ok(users);
+            return Ok(users.Select(ToUserResponse));
         }
         catch (Exception ex)
         {

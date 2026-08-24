@@ -43,18 +43,19 @@ public class AdminReportsController : ControllerBase
                 return normalized.ErrorResult;
             }
 
-            var filteredOrders = BuildFilteredOrdersQuery(normalized);
-            var filteredOrderItems = BuildFilteredOrderItemsQuery(normalized);
+            var reportData = await LoadReportData(normalized);
+            var filteredOrders = reportData.Orders;
+            var filteredOrderItems = reportData.Items;
 
             var orderCount = normalized.HasCategory
-                ? await filteredOrderItems.Select(oi => oi.OrderId).Distinct().CountAsync()
-                : await filteredOrders.CountAsync();
+                ? filteredOrderItems.Select(oi => oi.OrderId).Distinct().Count()
+                : filteredOrders.Count;
 
             var totalSales = normalized.HasCategory
-                ? await filteredOrderItems.SumAsync(oi => (decimal?)oi.Quantity * oi.Price) ?? 0m
-                : await filteredOrders.SumAsync(o => (decimal?)o.TotalAmount) ?? 0m;
+                ? filteredOrderItems.Sum(oi => (decimal)oi.Quantity * oi.Price)
+                : filteredOrders.Sum(o => o.TotalAmount);
 
-            var topProducts = await filteredOrderItems
+            var topProducts = filteredOrderItems
                 .GroupBy(oi => new { oi.ProductId, oi.ProductName })
                 .Select(group => new TopSellingProductDto
                 {
@@ -66,7 +67,7 @@ public class AdminReportsController : ControllerBase
                 .OrderByDescending(item => item.QuantitySold)
                 .ThenByDescending(item => item.Revenue)
                 .Take(5)
-                .ToListAsync();
+                .ToList();
 
             return Ok(new DailySalesReportDto
             {
@@ -247,7 +248,8 @@ public class AdminReportsController : ControllerBase
                 ? "revenue"
                 : "quantity";
 
-            var query = BuildFilteredOrderItemsQuery(normalized)
+            var reportData = await LoadReportData(normalized);
+            var query = reportData.Items
                 .GroupBy(oi => new { oi.ProductId, oi.ProductName })
                 .Select(group => new TopSellingProductDto
                 {
@@ -261,7 +263,7 @@ public class AdminReportsController : ControllerBase
                 ? query.OrderByDescending(item => item.Revenue).ThenByDescending(item => item.QuantitySold)
                 : query.OrderByDescending(item => item.QuantitySold).ThenByDescending(item => item.Revenue);
 
-            var items = await sorted.Take(topN).ToListAsync();
+            var items = sorted.Take(topN).ToList();
 
             return Ok(new TopSellingProductsReportDto
             {
@@ -326,7 +328,8 @@ public class AdminReportsController : ControllerBase
                 return normalized.ErrorResult;
             }
 
-            var items = await BuildFilteredOrdersQuery(normalized)
+            var reportData = await LoadReportData(normalized);
+            var items = reportData.Orders
                 .GroupBy(o => o.Status)
                 .Select(group => new OrderStatusSummaryItemDto
                 {
@@ -335,7 +338,7 @@ public class AdminReportsController : ControllerBase
                     TotalValue = group.Sum(order => order.TotalAmount)
                 })
                 .OrderBy(item => item.Status)
-                .ToListAsync();
+                .ToList();
 
             return Ok(new OrderSummaryReportDto
             {
@@ -377,18 +380,63 @@ public class AdminReportsController : ControllerBase
         return CsvFile(csv.ToString(), BuildFileName("order-summary", report.StartDate, report.EndDate));
     }
 
+    private async Task<(List<Order> Orders, List<OrderItem> Items)> LoadReportData(ReportFilters filters)
+    {
+        var orders = await _dbContext.Orders
+            .AsNoTracking()
+            .Where(o => o.OrderDate >= filters.StartDate && o.OrderDate < filters.EndExclusive)
+            .Where(o => o.PaymentStatus == PaymentStatus.Paid && o.Status != OrderStatus.Cancelled)
+            .ToListAsync();
+
+        if (!string.IsNullOrWhiteSpace(filters.PaymentMethod))
+        {
+            orders = orders
+                .Where(o => string.Equals(o.PaymentMethod, filters.PaymentMethod, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+
+        if (!string.IsNullOrWhiteSpace(filters.Customer))
+        {
+            var customerTerm = filters.Customer.Trim();
+            var users = await _dbContext.Users.AsNoTracking().ToListAsync();
+            var matchingUserIds = users
+                .Where(u => u.Name.Contains(customerTerm, StringComparison.OrdinalIgnoreCase) ||
+                            u.Email.Contains(customerTerm, StringComparison.OrdinalIgnoreCase))
+                .Select(u => u.Id)
+                .ToHashSet();
+            orders = orders.Where(o => matchingUserIds.Contains(o.UserId)).ToList();
+        }
+
+        var orderIds = orders.Select(o => o.Id).ToHashSet();
+        var items = (await _dbContext.OrderItems.AsNoTracking().ToListAsync())
+            .Where(item => orderIds.Contains(item.OrderId))
+            .ToList();
+
+        if (!string.IsNullOrWhiteSpace(filters.Category))
+        {
+            items = items
+                .Where(item => string.Equals(item.ProductCategory, filters.Category, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            var filteredOrderIds = items.Select(item => item.OrderId).ToHashSet();
+            orders = orders.Where(order => filteredOrderIds.Contains(order.Id)).ToList();
+        }
+
+        return (orders, items);
+    }
+
     private async Task<MonthlyRevenueReportDto> BuildMonthlyRevenueReport(ReportFilters filters, int year, int month)
     {
-        var filteredOrders = BuildFilteredOrdersQuery(filters);
-        var filteredOrderItems = BuildFilteredOrderItemsQuery(filters);
+        var reportData = await LoadReportData(filters);
+        var filteredOrders = reportData.Orders;
+        var filteredOrderItems = reportData.Items;
 
         var monthlyTotal = filters.HasCategory
-            ? await filteredOrderItems.SumAsync(oi => (decimal?)oi.Quantity * oi.Price) ?? 0m
-            : await filteredOrders.SumAsync(o => (decimal?)o.TotalAmount) ?? 0m;
+            ? filteredOrderItems.Sum(oi => (decimal)oi.Quantity * oi.Price)
+            : filteredOrders.Sum(o => o.TotalAmount);
 
         var dailyBreakdown = filters.HasCategory
-            ? await filteredOrderItems
-                .GroupBy(oi => oi.Order!.OrderDate.Date)
+            ? filteredOrderItems
+                .GroupBy(oi => filteredOrders.First(order => order.Id == oi.OrderId).OrderDate.Date)
                 .Select(group => new DailyRevenuePointDto
                 {
                     Date = group.Key,
@@ -396,8 +444,8 @@ public class AdminReportsController : ControllerBase
                     Orders = group.Select(item => item.OrderId).Distinct().Count()
                 })
                 .OrderBy(point => point.Date)
-                .ToListAsync()
-            : await filteredOrders
+                .ToList()
+            : filteredOrders
                 .GroupBy(o => o.OrderDate.Date)
                 .Select(group => new DailyRevenuePointDto
                 {
@@ -406,7 +454,7 @@ public class AdminReportsController : ControllerBase
                     Orders = group.Count()
                 })
                 .OrderBy(point => point.Date)
-                .ToListAsync();
+                .ToList();
 
         return new MonthlyRevenueReportDto
         {
@@ -418,71 +466,6 @@ public class AdminReportsController : ControllerBase
             Filters = filters.ToDto(),
             DailyBreakdown = dailyBreakdown
         };
-    }
-
-    private IQueryable<Order> BuildFilteredOrdersQuery(ReportFilters filters)
-    {
-        var query = _dbContext.Orders
-            .AsNoTracking()
-            .Where(o => o.OrderDate >= filters.StartDate && o.OrderDate < filters.EndExclusive)
-            .Where(o => o.PaymentStatus == PaymentStatus.Paid && o.Status != OrderStatus.Cancelled);
-
-        if (!string.IsNullOrWhiteSpace(filters.PaymentMethod))
-        {
-            query = query.Where(o => o.PaymentMethod == filters.PaymentMethod);
-        }
-
-        if (!string.IsNullOrWhiteSpace(filters.Customer))
-        {
-            var customerTerm = filters.Customer.ToLowerInvariant();
-
-            query =
-                from order in query
-                join user in _dbContext.Users.AsNoTracking() on order.UserId equals user.Id
-                where user.Name.ToLower().Contains(customerTerm) || user.Email.ToLower().Contains(customerTerm)
-                select order;
-        }
-
-        if (!string.IsNullOrWhiteSpace(filters.Category))
-        {
-            query = query.Where(o => o.Items.Any(i => i.ProductCategory == filters.Category));
-        }
-
-        return query;
-    }
-
-    private IQueryable<OrderItem> BuildFilteredOrderItemsQuery(ReportFilters filters)
-    {
-        var query = _dbContext.OrderItems
-            .AsNoTracking()
-            .Where(oi => oi.Order != null &&
-                         oi.Order.OrderDate >= filters.StartDate &&
-                         oi.Order.OrderDate < filters.EndExclusive &&
-                         oi.Order.PaymentStatus == PaymentStatus.Paid &&
-                         oi.Order.Status != OrderStatus.Cancelled);
-
-        if (!string.IsNullOrWhiteSpace(filters.Category))
-        {
-            query = query.Where(oi => oi.ProductCategory == filters.Category);
-        }
-
-        if (!string.IsNullOrWhiteSpace(filters.PaymentMethod))
-        {
-            query = query.Where(oi => oi.Order != null && oi.Order.PaymentMethod == filters.PaymentMethod);
-        }
-
-        if (!string.IsNullOrWhiteSpace(filters.Customer))
-        {
-            var customerTerm = filters.Customer.ToLowerInvariant();
-
-            query =
-                from item in query
-                join user in _dbContext.Users.AsNoTracking() on item.Order!.UserId equals user.Id
-                where user.Name.ToLower().Contains(customerTerm) || user.Email.ToLower().Contains(customerTerm)
-                select item;
-        }
-
-        return query;
     }
 
     private static ReportFilters NormalizeFilters(
