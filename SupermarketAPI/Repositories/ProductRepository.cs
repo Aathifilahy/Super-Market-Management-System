@@ -85,6 +85,12 @@ public class ProductRepository : IProductRepository
     {
         try
         {
+            var lastProduct = await _context.Products
+                .AsNoTracking()
+                .OrderByDescending(p => p.Id)
+                .FirstOrDefaultAsync();
+
+            product.Id = (lastProduct?.Id ?? 0) + 1;
             await _context.Products.AddAsync(product);
             await _context.SaveChangesAsync();
             return product;
