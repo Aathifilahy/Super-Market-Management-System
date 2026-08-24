@@ -151,11 +151,7 @@ public class AdminController : ControllerBase
                 IsActive = true
             };
 
-            var lastUser = await _dbContext.Users
-                .AsNoTracking()
-                .OrderByDescending(u => u.Id)
-                .FirstOrDefaultAsync();
-            user.Id = (lastUser?.Id ?? 0) + 1;
+            user.Id = await MongoIdGenerator.NextAsync(_dbContext.Users, u => u.Id);
 
             _dbContext.Users.Add(user);
             await _dbContext.SaveChangesAsync();

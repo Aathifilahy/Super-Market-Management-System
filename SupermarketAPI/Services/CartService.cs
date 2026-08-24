@@ -73,6 +73,8 @@ public class CartService : ICartService
                     AddedAt = DateTime.UtcNow
                 };
 
+                existingItem.Id = await MongoIdGenerator.NextAsync(_dbContext.CartItems, ci => ci.Id);
+
                 _dbContext.CartItems.Add(existingItem);
             }
             else
@@ -247,6 +249,8 @@ public class CartService : ICartService
             UpdatedAt = DateTime.UtcNow,
             IsActive = true
         };
+
+        cart.Id = await MongoIdGenerator.NextAsync(_dbContext.Carts, c => c.Id);
 
         _dbContext.Carts.Add(cart);
         await _dbContext.SaveChangesAsync();
