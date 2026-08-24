@@ -142,9 +142,13 @@ public class PosService : IPosService
         {
             var order = await _dbContext.Orders
                 .AsNoTracking()
-                .Include(o => o.Items)
                 .FirstOrDefaultAsync(o => o.Id == orderId)
                 ?? throw new KeyNotFoundException("Receipt not found.");
+
+            order.Items = await _dbContext.OrderItems
+                .AsNoTracking()
+                .Where(item => item.OrderId == order.Id)
+                .ToListAsync();
 
             if (!string.Equals(order.ShippingAddress, PosShippingAddress, StringComparison.Ordinal))
             {
@@ -185,7 +189,7 @@ public class PosService : IPosService
                 .FirstOrDefaultAsync()
                 ?? "Cashier";
 
-            return await _dbContext.Orders
+            var orders = await _dbContext.Orders
                 .AsNoTracking()
                 .Where(o => o.UserId == cashierUserId)
                 .Where(o => o.PaymentStatus == PaymentStatus.Paid)
@@ -193,17 +197,29 @@ public class PosService : IPosService
                 .Where(o => o.ShippingAddress == PosShippingAddress)
                 .OrderByDescending(o => o.OrderDate)
                 .Take(safeLimit)
-                .Select(o => new PosTransactionHistoryItemDto
-                {
-                    OrderId = o.Id,
-                    ReceiptNumber = BuildReceiptNumber(o.Id),
-                    TransactionDateUtc = o.OrderDate,
-                    CashierName = cashierName,
-                    PaymentMethod = o.PaymentMethod,
-                    Total = o.TotalAmount,
-                    TotalItems = o.Items.Sum(i => i.Quantity)
-                })
                 .ToListAsync();
+
+            var transactions = new List<PosTransactionHistoryItemDto>();
+            foreach (var order in orders)
+            {
+                var items = await _dbContext.OrderItems
+                    .AsNoTracking()
+                    .Where(item => item.OrderId == order.Id)
+                    .ToListAsync();
+
+                transactions.Add(new PosTransactionHistoryItemDto
+                {
+                    OrderId = order.Id,
+                    ReceiptNumber = BuildReceiptNumber(order.Id),
+                    TransactionDateUtc = order.OrderDate,
+                    CashierName = cashierName,
+                    PaymentMethod = order.PaymentMethod,
+                    Total = order.TotalAmount,
+                    TotalItems = items.Sum(item => item.Quantity)
+                });
+            }
+
+            return transactions;
         }
         catch (Exception ex)
         {

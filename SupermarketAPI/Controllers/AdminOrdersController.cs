@@ -28,25 +28,40 @@ public class AdminOrdersController : ControllerBase
     {
         try
         {
-            var orders = await (
-                from order in _dbContext.Orders.AsNoTracking()
-                join user in _dbContext.Users.AsNoTracking() on order.UserId equals user.Id
-                where order.PaymentStatus == PaymentStatus.Pending && order.Status != OrderStatus.Cancelled
-                orderby order.OrderDate descending
-                select new AdminOrderPaymentItemDto
+            var pendingOrders = await _dbContext.Orders
+                .AsNoTracking()
+                .Where(order => order.PaymentStatus == PaymentStatus.Pending && order.Status != OrderStatus.Cancelled)
+                .OrderByDescending(order => order.OrderDate)
+                .ToListAsync();
+
+            var orders = new List<AdminOrderPaymentItemDto>();
+            foreach (var order in pendingOrders)
+            {
+                var user = await _dbContext.Users
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(candidate => candidate.Id == order.UserId);
+
+                orders.Add(new AdminOrderPaymentItemDto
                 {
                     Id = order.Id,
                     UserId = order.UserId,
-                    CustomerName = user.Name,
-                    CustomerEmail = user.Email,
+                    CustomerName = user?.Name ?? string.Empty,
+                    CustomerEmail = user?.Email ?? string.Empty,
                     OrderDate = order.OrderDate,
                     TotalAmount = order.TotalAmount,
                     Status = order.Status.ToString(),
                     PaymentStatus = order.PaymentStatus.ToString(),
-                    PaymentMethod = order.PaymentMethod,
-                    TotalItems = order.Items.Sum(i => i.Quantity)
-                }
-            ).ToListAsync();
+                    PaymentMethod = order.PaymentMethod
+                });
+            }
+
+            foreach (var order in orders)
+            {
+                order.TotalItems = await _dbContext.OrderItems
+                    .AsNoTracking()
+                    .Where(item => item.OrderId == order.Id)
+                    .SumAsync(item => item.Quantity);
+            }
 
             return Ok(orders);
         }
